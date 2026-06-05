@@ -68,7 +68,7 @@ A 股 / 港股 / 美股 · 个股深度分析引擎 · **v3.7.1 首页补 Sereni
 PS：群内禁止任何商业化的分享和讨论，只建议讨论插件bug和期待更新内容。任何涉及违规和商业变现发言都不被允许。
 
 <p align="center">
-  <img src="docs/screenshots/eb89e22967bb7f7d798295121bb0d28f.jpg" width="300" alt="微信群二维码" />
+  <img src="docs/screenshots/8501bb4280cc56c809c0a19619e49c82.jpg" width="300" alt="拉群会被封，有想法的直接加我吧，只针对插件本身或者其他有趣的项目和量化，不聊个股" />
 </p>
 
 > 二维码会定期过期，如果扫码失败请提 Issue 或在论坛留言，我会更新。
