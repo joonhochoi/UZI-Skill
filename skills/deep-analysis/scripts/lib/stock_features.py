@@ -93,7 +93,9 @@ def extract_features(raw: dict, dims: dict) -> dict:
     f["industry"] = basic.get("industry") or "—"
     f["price"] = _f(basic.get("price"))
     f["change_pct"] = _f(basic.get("change_pct"))
-    f["market_cap_yi"] = _f(str(basic.get("market_cap", "0")).replace("亿", ""))
+    # K(한국)는 basic 이 market_cap_yi(억원) 수치를 직접 제공 → 우선 사용.
+    # A주는 market_cap 문자열('4500亿')에서 파싱.
+    f["market_cap_yi"] = _f(basic.get("market_cap_yi")) or _f(str(basic.get("market_cap", "0")).replace("亿", ""))
     f["circulating_cap_yi"] = _f(str(basic.get("circulating_cap", "0")).replace("亿", ""))
     f["listed_date"] = str(basic.get("listed_date", ""))[:10]
     f["chairman"] = basic.get("chairman") or "—"
@@ -389,10 +391,12 @@ def extract_features(raw: dict, dims: dict) -> dict:
     f["ticker"] = raw.get("ticker", "") if raw else ""
     # Market: infer from ticker suffix
     ticker_str = f["ticker"]
-    if ticker_str.endswith(".SZ") or ticker_str.endswith(".SH"):
+    if ticker_str.endswith((".SZ", ".SH", ".BJ")):
         f["market"] = "A"
     elif ticker_str.endswith(".HK"):
         f["market"] = "HK"
+    elif ticker_str.endswith((".KS", ".KQ")):
+        f["market"] = "K"
     else:
         f["market"] = "US"
 

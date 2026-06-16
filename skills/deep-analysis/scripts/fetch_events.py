@@ -208,6 +208,28 @@ def _web_search_events(name: str, max_results: int = 6) -> list[dict]:
 
 def main(ticker: str) -> dict:
     ti = parse_ticker(ticker)
+    if ti.market == "K":
+        # K · 네이버 종목뉴스 + DART 공시 → 15_events
+        try:
+            from lib.kr_data_sources import (naver_news, dart_corp_code,
+                                             dart_disclosures, to_events_dim)
+            news = naver_news(ti.code, 30)
+            disclosures = []
+            cc = dart_corp_code(ti.code)
+            if cc:
+                disclosures = dart_disclosures(cc, count=20)
+            data = to_events_dim(news, disclosures)
+            return {
+                "ticker": ti.full, "data": data,
+                "source": "naver_news + dart_disclosures",
+                "fallback": not bool(news or disclosures),
+            }
+        except Exception as e:
+            return {
+                "ticker": ti.full,
+                "data": {"_err": f"{type(e).__name__}: {str(e)[:120]}"},
+                "source": "naver+dart", "fallback": True,
+            }
     if ti.market == "H":
         # v2.5 · HK 走 HKEXNews + 中文 web search 兜底
         try:

@@ -13,7 +13,7 @@ import json
 import sys
 
 from lib import data_sources as ds
-from lib.market_router import is_chinese_name, parse_ticker, classify_security_type
+from lib.market_router import is_chinese_name, is_korean_name, parse_ticker, classify_security_type
 
 
 _NON_STOCK_GUIDANCE = {
@@ -41,7 +41,22 @@ _NON_STOCK_GUIDANCE = {
 
 
 def main(user_input: str) -> dict:
-    if is_chinese_name(user_input):
+    if is_korean_name(user_input):
+        # 한글 종목명 → 네이버 ac 자동완성 resolve (K market)
+        r = ds.resolve_korean_name_rich(user_input)
+        if r["resolved"] is None:
+            return {
+                "ticker": user_input,
+                "market": None,
+                "data": {},
+                "error": "name_not_resolved",
+                "user_input": user_input,
+                "suggestions": r["candidates"][:5],
+                "source": f"name_resolver:{r['source']}",
+                "fallback": True,
+            }
+        ti = r["resolved"]
+    elif is_chinese_name(user_input):
         r = ds.resolve_chinese_name_rich(user_input)
         if r["resolved"] is None:
             # Ambiguous or unresolvable — surface candidates for UI confirmation.
@@ -80,11 +95,12 @@ def main(user_input: str) -> dict:
         }
 
     data = ds.fetch_basic(ti)
+    src = "naver" if ti.market == "K" else "akshare"
     return {
         "ticker": ti.full,
         "market": ti.market,
         "data": data,
-        "source": f"akshare:{ti.market}",
+        "source": f"{src}:{ti.market}",
         "fallback": False,
     }
 

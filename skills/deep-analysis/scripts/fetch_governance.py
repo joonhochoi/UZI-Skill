@@ -8,6 +8,30 @@ from lib.market_router import parse_ticker
 
 def main(ticker: str) -> dict:
     ti = parse_ticker(ticker)
+    if ti.market == "K":
+        # K · DART 최대주주 + 임원 → 11_governance
+        try:
+            from lib.kr_data_sources import (dart_corp_code, dart_major_shareholders,
+                                             dart_executives, to_governance_dim)
+            cc = dart_corp_code(ti.code)
+            sh, ex = [], []
+            if cc:
+                # 직전 사업연도 기준 (2024 사업보고서 11011)
+                sh = dart_major_shareholders(cc, 2024)
+                ex = dart_executives(cc, 2024)
+            data = to_governance_dim(sh, ex)
+            return {
+                "ticker": ti.full, "data": data,
+                "source": "dart:hyslrSttus + exctvSttus",
+                "fallback": not bool(sh or ex),
+            }
+        except Exception as e:
+            return {
+                "ticker": ti.full,
+                "data": {"_err": f"{type(e).__name__}: {str(e)[:120]}", "pledge": [],
+                         "insider_trades_1y": [], "qualitative_search": []},
+                "source": "dart", "fallback": True,
+            }
     pledges: list = []
     insider: list = []
     try:

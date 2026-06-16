@@ -114,7 +114,9 @@ MARKET_SCOPE: dict[str, str] = {
 def market_match(investor_id: str, market: str) -> bool:
     """Return True if this investor would look at this market.
 
-    market: "A", "HK", "US"
+    market: "A", "HK", "US", "K"(한국 KOSPI/KOSDAQ).
+    scope=='all' 이면 항상 True. F조(游资)만 scope='A' 라 A주 외(H/U/K)는 전부 skip
+    — 打板/龙虎榜/T+1 방법론이 A주 생태에서만 유효하기 때문.
     """
     scope = MARKET_SCOPE.get(investor_id, "all")
     if scope == "all":

@@ -86,6 +86,22 @@ def _universe_margin_detail(exchange: str) -> list:
 
 def main(ticker: str) -> dict:
     ti = parse_ticker(ticker)
+    if ti.market == "K":
+        # K · 네이버 투자자별 매매동향(외국인/기관/개인) → 12_capital_flow
+        # 중국 북향자금 개념 없음 → 외국인+기관 순매수를 '주력'으로 매핑
+        try:
+            from lib.kr_data_sources import naver_trend, to_capital_flow_dim
+            data = to_capital_flow_dim(naver_trend(ti.code))
+            return {
+                "ticker": ti.full, "data": data,
+                "source": "naver:trend", "fallback": not bool(data.get("main_fund_flow_20d")),
+            }
+        except Exception as e:
+            return {
+                "ticker": ti.full,
+                "data": {"_err": f"{type(e).__name__}: {str(e)[:120]}", "main_fund_flow_20d": []},
+                "source": "naver", "fallback": True,
+            }
     if ti.market == "H":
         # v2.5 · HK 港股通南北向标记 + 历史每日市值（净值变动 proxy）
         # akshare 港股通南北向 spot (stock_hsgt_sh_hk_spot_em) 走 push2 已 blocked，

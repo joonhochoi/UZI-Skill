@@ -157,7 +157,12 @@ def main(ticker: str) -> dict:
         if net_profit_latest_yi > 0:
             # Convert 亿 → 元 for DCF calc
             net_profit_yuan = net_profit_latest_yi * 1e8
-            dcf_result = simple_dcf(fcf_latest=net_profit_yuan * 0.8)
+            # 한국(K)은 무위험수익률=국고채3년(~3.0%)+ERP(~5.5%) → WACC ~8.5%, 종료성장 2.0%
+            _kr = (ti.market == "K")
+            _wacc = 0.085 if _kr else 0.10
+            _term_g = 0.02 if _kr else 0.03
+            dcf_result = simple_dcf(fcf_latest=net_profit_yuan * 0.8,
+                                    wacc=_wacc, growth_terminal=_term_g)
             current_price = basic.get("price") or 0
             total_shares = basic.get("total_shares") or 0
             if not total_shares:
@@ -168,8 +173,8 @@ def main(ticker: str) -> dict:
             total_shares = total_shares or 1e9
             dcf_sensitivity = dcf_sensitivity_matrix(
                 fcf_latest=net_profit_yuan * 0.8,
-                waccs=[8, 9, 10, 11, 12],
-                growths=[6, 8, 10, 12],
+                waccs=[6, 7, 8, 9, 10] if _kr else [8, 9, 10, 11, 12],
+                growths=[4, 6, 8, 10] if _kr else [6, 8, 10, 12],
                 current_price=current_price,
                 shares_out=total_shares,
             )

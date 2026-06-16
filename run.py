@@ -285,6 +285,9 @@ def main():
                         help="HTTP 服务端口 (默认 8976)")
     parser.add_argument("--force-name", metavar="CODE",
                         help="绕过中文名纠错直接使用指定代码 (如 --force-name 000582.SZ)")
+    parser.add_argument("--market", choices=["A", "H", "U", "K"], default=None,
+                        help="시장 강제 지정. 순수 6자리 코드의 모호성 해소용 "
+                             "(A주는 코드+.A, 한국은 코드+.KS 로 변환). 예: --market A 600519 / --market K 005930")
     parser.add_argument("--no-resume", action="store_true",
                         help="v2.6 · 强制重抓所有 fetcher（默认 resume：复用 .cache/{ticker}/raw_data.json 已有维度）")
     parser.add_argument("--enable-xueqiu-login", action="store_true",
@@ -325,6 +328,23 @@ def main():
     if args.force_name:
         print(f"   [force-name] {args.ticker} → {args.force_name}")
         args.ticker = args.force_name
+
+    # 시장 강제 지정: 순수 6자리 코드의 모호성 해소 (A주는 .A, 한국은 .KS, 홍콩은 .HK)
+    if args.market:
+        import re as _re
+        if _re.match(r"^\d{6}$", str(args.ticker)):
+            _mk_suffix = {"A": ".A", "K": ".KS", "H": ".HK"}.get(args.market)
+            if _mk_suffix:
+                args.ticker = f"{args.ticker}{_mk_suffix}"
+                print(f"   [market={args.market}] → {args.ticker}")
+
+    # K(한국) 종목이면 출력 언어 기본 한국어 (deep 경로 agent 코멘트 · UZI_LANG 명시 시 우선)
+    try:
+        from lib.market_router import parse_ticker as _pt, is_korean_name as _ikn
+        if args.market == "K" or _ikn(str(args.ticker)) or _pt(str(args.ticker)).market == "K":
+            os.environ.setdefault("UZI_LANG", "ko")
+    except Exception:
+        pass
 
     # v2.7.1 · XueQiu login opt-in
     if args.enable_xueqiu_login:
@@ -572,6 +592,17 @@ def main():
     if not standalone.exists():
         print(f"\n❌ 报告文件未找到: {standalone}")
         return
+
+    # K(한국) 리포트 한국어 후처리 · D8 (기존 중국어 렌더러 비침습 · 후처리만)
+    if ti.market == "K":
+        try:
+            from lib.report.locale_ko import localize_ko
+            for _p in (standalone, report_dir / "full-report.html"):
+                if _p.exists():
+                    _p.write_text(localize_ko(_p.read_text(encoding="utf-8")), encoding="utf-8")
+            print("   🇰🇷 한국어 후처리 적용 (통화 ₩ · 단위 억/조 · 라벨)")
+        except Exception as _e:
+            print(f"⚠️  한국어 후처리 실패(무시): {_e}")
 
     print(f"\n{'━' * 50}")
     print(f"📄 报告路径: {standalone}")

@@ -383,6 +383,12 @@ def _fetch_us(ti) -> dict:
         return {}
 
 
+def _fetch_kr(ti) -> dict:
+    """K 재무 · 네이버 finance(annual) → 1_financials 차원 스키마."""
+    from lib.kr_data_sources import naver_finance, to_financials_dim
+    return to_financials_dim(naver_finance(ti.code, "annual"))
+
+
 def main(ticker: str) -> dict:
     ti = parse_ticker(ticker)
     try:
@@ -392,6 +398,8 @@ def main(ticker: str) -> dict:
             data = _fetch_us(ti)
         elif ti.market == "H":
             data = _fetch_hk(ti)
+        elif ti.market == "K":
+            data = _fetch_kr(ti)
         else:
             data = {}
         error = None

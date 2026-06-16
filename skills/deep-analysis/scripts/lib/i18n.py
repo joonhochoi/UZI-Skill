@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import os
 
-SUPPORTED_LANGS = ("zh", "en")
+SUPPORTED_LANGS = ("zh", "en", "ko")
 
 
 def get_language() -> str:
@@ -34,6 +34,13 @@ def language_instruction(lang: str = "") -> str:
             "OUTPUT LANGUAGE: All reasoning, headline, verdict and commentary must be "
             "written in English. Keep persona-specific terms (e.g., '赵老哥', '段永平') "
             "in their original Chinese as they are proper nouns."
+        )
+    if lang == "ko":
+        return (
+            "출력 언어: 모든 reasoning / headline / verdict / commentary 는 한국어로 작성한다. "
+            "투자자 고유명사(예: 巴菲特/Buffett, 段永平, 赵老哥)는 원문(한자/영문)을 유지한다. "
+            "금융 용어는 한국어 우선(순이익률 / 매출총이익률 / PER / 해자), "
+            "기술·계량 용어는 영문 유지 가능(DCF / PEG / EPS)."
         )
     # zh default
     return (

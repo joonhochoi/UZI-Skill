@@ -305,6 +305,8 @@ def fetch_basic(ti: TickerInfo) -> dict:
         return cached(ti.full, f"basic__{ti.code}", lambda: _fetch_basic_a(ti), ttl=TTL_REALTIME)
     if ti.market == "H":
         return cached(ti.full, f"basic__{ti.code}", lambda: _fetch_basic_hk(ti), ttl=TTL_REALTIME)
+    if ti.market == "K":
+        return cached(ti.full, f"basic__{ti.code}", lambda: _fetch_basic_kr(ti), ttl=TTL_REALTIME)
     return cached(ti.full, f"basic__{ti.code}", lambda: _fetch_basic_us(ti), ttl=TTL_REALTIME)
 
 
@@ -832,6 +834,20 @@ def _fetch_basic_hk(ti: TickerInfo) -> dict:
     return out
 
 
+def _fetch_basic_kr(ti: TickerInfo) -> dict:
+    """K basic via 네이버 신 API (integration + basic 병합). 절대 raise 안 함."""
+    from .kr_data_sources import naver_basic_combined
+    out = naver_basic_combined(ti.code)
+    if not out.get("code"):
+        out["code"] = ti.full
+    out["market"] = "K"
+    # 순수 6자리 입력의 실제 거래소(.KS/.KQ)를 basic 응답으로 확정
+    suffix = out.get("market_suffix")
+    if suffix in (".KS", ".KQ"):
+        out["full"] = f"{ti.code}{suffix}"
+    return out
+
+
 def _fetch_basic_us(ti: TickerInfo) -> dict:
     if yf is None:
         raise RuntimeError("yfinance not installed")
@@ -875,7 +891,27 @@ def _fetch_kline_impl(ti: TickerInfo, period: str, start: str, adjust: str) -> l
         return _kline_hk_chain(ti, period, start, adjust)
     if ti.market == "U":
         return _kline_us_chain(ti)
+    if ti.market == "K":
+        return _kline_kr_chain(ti, period, start, adjust)
     return []
+
+
+def _kline_kr_chain(ti: TickerInfo, period: str, start: str, adjust: str) -> list[dict]:
+    """K K선 · 네이버 chart API. A주와 동일한 중국어 키 스키마로 변환해 다운스트림 재사용."""
+    from .kr_data_sources import naver_chart_ohlcv
+    p = {"daily": "day", "weekly": "week", "monthly": "month"}.get(period, "day")
+    end = datetime.now().strftime("%Y%m%d")
+    candles = naver_chart_ohlcv(ti.code, start or "20240101", end, period=p)
+    out: list[dict] = []
+    for c in candles:
+        d = str(c.get("date") or "")
+        date_fmt = f"{d[:4]}-{d[4:6]}-{d[6:8]}" if len(d) == 8 else d
+        out.append({
+            "日期": date_fmt, "开盘": c.get("open"), "收盘": c.get("close"),
+            "最高": c.get("high"), "最低": c.get("low"),
+            "成交量": c.get("volume"), "成交额": 0,
+        })
+    return out
 
 
 def _kline_a_share_chain(ti: TickerInfo, period: str, start: str, adjust: str) -> list[dict]:
@@ -1195,6 +1231,12 @@ def fetch_financials(ti: TickerInfo) -> dict:
 
 
 def _fetch_financials_impl(ti: TickerInfo) -> dict:
+    if ti.market == "K":
+        from .kr_data_sources import naver_finance
+        return {
+            "annual": naver_finance(ti.code, "annual"),
+            "quarter": naver_finance(ti.code, "quarter"),
+        }
     if ti.market == "A" and ak:
         try:
             abstract = ak.stock_financial_abstract(symbol=ti.code)
@@ -1284,6 +1326,9 @@ def fetch_news(ti: TickerInfo, limit: int = 30) -> list[dict]:
 
 def _fetch_news_impl(ti: TickerInfo, limit: int) -> list[dict]:
     try:
+        if ti.market == "K":
+            from .kr_data_sources import naver_news
+            return naver_news(ti.code, limit)
         if ti.market == "A":
             df = ak.stock_news_em(symbol=ti.code)
             return df.head(limit).to_dict("records") if df is not None else []
@@ -1333,8 +1378,16 @@ def _fetch_north_impl(ti: TickerInfo) -> dict:
 # ─────────────────────────────────────────────────────────────
 # 7. Research reports
 # ─────────────────────────────────────────────────────────────
-def fetch_research_reports(ti: TickerInfo) -> list[dict]:
-    """Research reports. TTL = 24h (mostly stable)."""
+def fetch_research_reports(ti: TickerInfo):
+    """Research reports. TTL = 24h (mostly stable).
+
+    A주는 list[dict](akshare records), K는 네이버 research dict
+    (report_count / coverage_count / recent_reports / target_price_avg).
+    소비자(fetch_research.py)가 시장별로 shape 처리.
+    """
+    if ti.market == "K":
+        key = f"research__{ti.code}"
+        return cached(ti.full, key, lambda: _fetch_research_impl_kr(ti), ttl=TTL_QUARTERLY)
     if ak is None or ti.market != "A":
         return []
     key = f"research__{ti.code}"
@@ -1347,6 +1400,11 @@ def _fetch_research_impl(ti: TickerInfo) -> list[dict]:
         return df.head(20).to_dict("records") if df is not None else []
     except Exception:
         return []
+
+
+def _fetch_research_impl_kr(ti: TickerInfo) -> dict:
+    from .kr_data_sources import naver_research
+    return naver_research(ti.code)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -1455,6 +1513,48 @@ def resolve_chinese_name(name: str) -> TickerInfo | None:
     """
     r = resolve_chinese_name_rich(name)
     return r["resolved"]
+
+
+# ─────────────────────────────────────────────────────────────
+# Top-level: resolve Korean name → ticker (K market · Phase 3)
+# ─────────────────────────────────────────────────────────────
+def _kr_suffix(exchange: str | None) -> str:
+    return ".KS" if exchange == "KOSPI" else ".KQ" if exchange == "KOSDAQ" else ".KS"
+
+
+def resolve_korean_name_rich(name: str) -> dict:
+    """Resolve a Korean stock name via Naver autocomplete (ac.stock.naver.com).
+
+    Mirrors `resolve_chinese_name_rich`. KOSPI→.KS, KOSDAQ→.KQ.
+    Auto-resolve when an exact name match exists, or a single candidate;
+    otherwise resolved=None and the caller disambiguates from `candidates`.
+    """
+    user_input = name
+    try:
+        from .kr_data_sources import naver_search
+        hits = naver_search(name)
+    except Exception:
+        hits = []
+    if not hits:
+        return {"resolved": None, "candidates": [], "source": "none", "user_input": user_input}
+
+    candidates = [
+        {"code": f"{h.get('code')}{_kr_suffix(h.get('exchange'))}", "name": h.get("name"),
+         "distance": 0, "source": "naver_ac"}
+        for h in hits[:5]
+    ]
+    exact = next((h for h in hits if h.get("name") == name), None)
+    pick = exact or (hits[0] if len(hits) == 1 else None)
+    resolved = None
+    if pick:
+        resolved = TickerInfo(raw=name, code=pick["code"],
+                              full=f"{pick['code']}{_kr_suffix(pick.get('exchange'))}", market="K")
+    return {"resolved": resolved, "candidates": candidates, "source": "naver_ac", "user_input": user_input}
+
+
+def resolve_korean_name(name: str) -> TickerInfo | None:
+    """Legacy-style shim mirroring `resolve_chinese_name`."""
+    return resolve_korean_name_rich(name)["resolved"]
 
 
 if __name__ == "__main__":
