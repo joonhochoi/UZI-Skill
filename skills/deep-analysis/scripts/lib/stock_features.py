@@ -390,8 +390,15 @@ def extract_features(raw: dict, dims: dict) -> dict:
     # Ticker passthrough
     f["ticker"] = raw.get("ticker", "") if raw else ""
     # Market: infer from ticker suffix
+    # raw['market'] 가 명시돼 있으면 우선(pipeline 이 설정 · ticker 는 접미사 없는
+    # '005930' 일 수 있어 접미사 추론은 오판 위험). parse_ticker 코드(A/H/U/K) →
+    # 내부 표기(A/HK/US/K) 매핑.
     ticker_str = f["ticker"]
-    if ticker_str.endswith((".SZ", ".SH", ".BJ")):
+    _MKT_MAP = {"A": "A", "H": "HK", "U": "US", "K": "K", "HK": "HK", "US": "US"}
+    _rm = raw.get("market") if raw else None
+    if _rm in _MKT_MAP:
+        f["market"] = _MKT_MAP[_rm]
+    elif ticker_str.endswith((".SZ", ".SH", ".BJ")):
         f["market"] = "A"
     elif ticker_str.endswith(".HK"):
         f["market"] = "HK"

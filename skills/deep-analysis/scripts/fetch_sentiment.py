@@ -15,14 +15,25 @@ def main(ticker: str) -> dict:
     name = basic.get("name") or ti.code
 
     # Query each platform separately
-    platforms = {
-        "xueqiu": f"site:xueqiu.com {name}",
-        "guba": f"site:guba.eastmoney.com {name}",
-        "zhihu": f"知乎 {name} 股票 分析",
-        "weibo": f"微博 {name} 股票",
-        "xiaohongshu": f"小红书 {name} 股票",
-        "big_v": f"{name} 大V 分析",
-    }
+    if ti.market == "K":
+        # 한국 플랫폼 (중국 雪球/股吧/知乎 는 한국 종목에 무의미)
+        platforms = {
+            "naver_finance": f"site:finance.naver.com {name} 종목토론",
+            "naver_blog": f"{name} 주식 분석 블로그",
+            "youtube": f"{name} 주식 유튜브",
+            "news": f"{name} 주가 전망",
+            "community": f"{name} 종목토론방 디시 fmkorea",
+            "big_v": f"{name} 주식 전문가 의견",
+        }
+    else:
+        platforms = {
+            "xueqiu": f"site:xueqiu.com {name}",
+            "guba": f"site:guba.eastmoney.com {name}",
+            "zhihu": f"知乎 {name} 股票 分析",
+            "weibo": f"微博 {name} 股票",
+            "xiaohongshu": f"小红书 {name} 股票",
+            "big_v": f"{name} 大V 分析",
+        }
 
     snippets: dict[str, list] = {}
     platform_hit = {}
@@ -105,7 +116,9 @@ def main(ticker: str) -> dict:
             "guba_volume": f"{platform_hit.get('guba', 0)} 条结果",
             "big_v_mentions": f"{big_v_count} 位大V提及" if big_v_count else "—",
             "positive_pct": f"{positive_pct}%",
-            "sentiment_label": "乐观" if positive_pct > 60 else "悲观" if positive_pct < 40 else "中性",
+            "sentiment_label": ("中性" if (pos + neg) == 0  # 감정 단어 0개 = 판단 불가 = 중립(오'비관' 방지)
+                                else "乐观" if positive_pct > 60
+                                else "悲观" if positive_pct < 40 else "中性"),
             "platform_snippets": snippets,
             "platform_hits": platform_hit,
             "total_mentions": total_hits,

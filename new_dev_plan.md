@@ -322,6 +322,35 @@ market에 따라 파라미터 선택 분기.
 
 ---
 
+### 🔎 medium/deep E2E 점검 결과 (2026-06-17)
+
+lite 이후 medium(22차원 전체)·deep(sonnet subagent 66 평가위원 role-play) E2E 를 돌려 점검.
+
+**deep 경로 동작 확인**: sonnet subagent 가 `panel.json`/`raw_data.json` 읽고 `agent_analysis.json`
+작성(42 활성 + 24 skip, 19차원 한국어 코멘트) → stage2 재조립 → 한국어 deep 리포트(707KB) 생성 성공.
+
+**점검 중 보완 완료**:
+- 🐞 **[핵심 버그] 평가위원 market "US" 오판** — `extract_features` 가 raw ticker 접미사로 market 추론하는데
+  pipeline raw ticker 는 접미사 없는 `005930` → US 로 오판되어 평가위원이 미국 시장 룰 적용
+  (F조 skip 사유 "不看US市场"). `raw['market']`(="K") 우선 사용으로 수정. pipeline/run.py 의
+  market 화이트리스트에도 "K" 추가. → 이제 thorp 등 US 전용 평가위원도 K 를 올바르게 skip.
+- 🐞 **17_sentiment 中 플랫폼 → "비관" 오표시** — 雪球/股吧/知乎 0 hits 로 thermometer 0·"悲观".
+  K 분기로 한국 플랫폼(naver/youtube/news/community) 쿼리 + 감정 단어 0개면 "中性(중립)" 처리.
+- 🌐 **번역 보강** — locale_ko 에 감정 라벨/중국 플랫폼명/빈데이터/액션어 추가, 미치환 f-string 잔재 정리.
+
+**Phase 7 / 후속 이슈로 기록 (미보완)**:
+- **industry 이름 미수집** — K basic 에 업종명 없음(`industry='综合'` fallback, 13곳). 단
+  네이버 integration 에 `industryCode`(278) + `industryCompareInfo`(동종 6종목), DART `induty_code`(264)가
+  이미 있음 → ① KSIC/네이버 코드→업종명 매핑, ② `industryCompareInfo` 로 **4_peers** 채우기,
+  ③ `consensusInfo.priceTargetMean/recommMean` 로 **6_research** 목표가(구조화) 보강.
+- **6_fund_holders K** — DART 펀드보유, 현재 "A-share only" skip.
+- **웹검색 쿼리 추가 한국어화** — fetch_macro/policy/moat/trap 일부 쿼리.
+- **investor_criteria 템플릿/features 키명 불일치**(`{pe_ttm}`↔`pe`, `{roe}`↔`roe_latest`, `{ev_to_revenue}` 등 없음)
+  — **K 전용 아님(전체 시장 영향, upstream)**. 현재 K 리포트는 후처리로 잔재만 가림. 근본 수정은 별도.
+- KRW 재무 단위(억원) 표기 명시.
+
+---
+
 ### Phase 7 · 업종 매핑 · peers · 마감 (★, 1일)
 
 1. `lib/industry_mapping.py`: KRX 업종(WICS/FICS) → 내부 표준 업종 키 매핑 테이블. `7_industry`의 `INDUSTRY_ESTIMATES` 하드코딩을 한국 주요 업종(반도체/2차전지/바이오/인터넷/조선/방산 등)으로 확장.

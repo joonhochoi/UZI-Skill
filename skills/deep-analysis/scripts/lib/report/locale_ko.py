@@ -71,6 +71,26 @@ _ZH_TO_KO: dict[str, str] = {
     "上涨": "상승",
     "下跌": "하락",
     "评分": "점수",
+    # ─ 투자심리 라벨 ─
+    "乐观": "낙관",
+    "悲观": "비관",
+    "中性": "중립",
+    "热度": "열기",
+    "情绪": "심리",
+    "条结果": "건",
+    "位大V提及": "명 인플루언서 언급",
+    # ─ 빈 데이터 / 상태 ─
+    "综合": "종합",
+    "暂无数据": "데이터 없음",
+    "暂无": "데이터 없음",
+    "无数据": "데이터 없음",
+    "需定性评估": "정성 평가 필요",
+    "数据缺失": "데이터 누락",
+    # ─ 중국 플랫폼명 (한국 종목 리포트에 노출 시) ─
+    "雪球": "설구(중국)",
+    "股吧": "주식게시판",
+    "知乎": "지식인",
+    "微博": "웨이보",
 }
 
 
@@ -100,6 +120,17 @@ def _localize_labels(html: str) -> str:
     return html
 
 
+# 평가위원 코멘트 템플릿의 미치환 f-string 잔재. 예: {pe_ttm:.0f} {roe:.1f} {ev_to_revenue:.1f}
+# (근본 원인은 investor_criteria 템플릿 변수명 ↔ features 키명 불일치 · upstream 전체 이슈)
+_RE_UNRENDERED = re.compile(r"\{[a-z_]+:[.,0-9a-z%x]+\}")
+
+
+def _strip_unrendered(html: str) -> str:
+    """미치환 f-string 변수({word:.Nf} 형태)를 — 로 치환. format spec(콜론+포맷)이 있는
+    소문자 변수만 대상이라 CSS/JS 중괄호({ return 1; })는 건드리지 않는다."""
+    return _RE_UNRENDERED.sub("—", html)
+
+
 def localize_ko(html: str) -> str:
     """K 리포트 HTML 한국어 후처리 (통화 → 단위 → 라벨 순)."""
     if not html:
@@ -107,4 +138,5 @@ def localize_ko(html: str) -> str:
     html = _localize_currency(html)
     html = _localize_units(html)
     html = _localize_labels(html)
+    html = _strip_unrendered(html)
     return html

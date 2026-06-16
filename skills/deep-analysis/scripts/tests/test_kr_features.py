@@ -42,3 +42,21 @@ def test_market_cap_yi_a_share_still_parses_string():
     from lib.stock_features import extract_features
     f = extract_features(_raw("600519.SH", {"market_cap": "4500亿"}), {})
     assert f["market_cap_yi"] == 4500.0
+
+
+def test_raw_market_takes_priority_over_ticker_suffix():
+    """pipeline raw 의 ticker 는 접미사 없는 '005930' 이라, raw['market'] 를 우선해야 한다.
+
+    버그: extract_features 가 ticker 접미사로만 추론 → '005930'이 US 로 오판되어
+    평가위원이 미국 시장 룰로 평가하던 문제 (deep E2E 에서 발견).
+    raw['market'] 는 parse_ticker 시장코드(A/H/U/K) → 내부 표기(A/HK/US/K)로 매핑.
+    """
+    from lib.stock_features import extract_features
+    raw = {"ticker": "005930", "market": "K", "dimensions": {"0_basic": {"data": {}}}}
+    assert extract_features(raw, {})["market"] == "K"
+    raw_h = {"ticker": "00700", "market": "H", "dimensions": {"0_basic": {"data": {}}}}
+    assert extract_features(raw_h, {})["market"] == "HK"
+    raw_u = {"ticker": "AAPL", "market": "U", "dimensions": {"0_basic": {"data": {}}}}
+    assert extract_features(raw_u, {})["market"] == "US"
+    raw_a = {"ticker": "600519", "market": "A", "dimensions": {"0_basic": {"data": {}}}}
+    assert extract_features(raw_a, {})["market"] == "A"

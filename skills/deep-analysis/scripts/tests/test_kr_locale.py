@@ -72,3 +72,23 @@ def test_i18n_ko_supported():
     from lib.i18n import language_instruction, SUPPORTED_LANGS
     assert "ko" in SUPPORTED_LANGS
     assert "한국어" in language_instruction("ko")
+
+
+def test_strip_unrendered_fstrings():
+    """평가위원 코멘트 템플릿의 미치환 f-string({pe_ttm:.0f} 등)을 — 로 정리.
+
+    근본 원인은 investor_criteria 템플릿/features 키명 불일치(전체 시장 영향, upstream)
+    지만, K 리포트 가시성을 위해 후처리에서 잔재를 가린다.
+    """
+    from lib.report.locale_ko import localize_ko
+    out = localize_ko("PER {pe_ttm:.0f}배 · ROE {roe:.1f}% · {ev_to_revenue:.1f}x")
+    assert "{pe_ttm" not in out
+    assert "{roe" not in out
+    assert "{ev_to_revenue" not in out
+
+
+def test_strip_unrendered_keeps_normal_braces():
+    """정상 텍스트(CSS/JS 중괄호 등)는 건드리지 않는다 — 변수 패턴만 제거."""
+    from lib.report.locale_ko import localize_ko
+    out = localize_ko("function(){ return 1; }")
+    assert "return 1" in out
