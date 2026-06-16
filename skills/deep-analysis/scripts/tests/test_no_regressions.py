@@ -583,23 +583,26 @@ def test_debate_no_hardcoded_default_avatars():
 
 
 # ─── v2.9.2 · ETF/LOF/可转债 识别与早期拦截 ──
+# v-K · 계약 변경: 순수 6자리는 K 우선이 되었으므로, A주 거래소 추론을 검증하려면
+# `.A` 접미사로 A주 의도를 명시한다 (parse_ticker 가 _a_share_suffix 로 거래소 결정).
+# classify_security_type(ti.code) 는 순수 함수라 6자리 코드만 보고 그대로 동작.
 def test_ticker_parser_sh_etf():
-    """BUG (v2.9.2) · 512400 是 SH ETF，不能被错判为 SZ"""
+    """BUG (v2.9.2) · 512400 是 SH ETF，不能被错判为 SZ（v-K: .A 명시）"""
     from lib.market_router import parse_ticker, classify_security_type
     # 用户报告的核心 case
-    ti = parse_ticker("512400")
+    ti = parse_ticker("512400.A")
     assert ti.full == "512400.SH", f"BUG#2.9.2 regression: 512400 应为 SH，实际 {ti.full!r}"
     assert classify_security_type(ti.code) == "etf"
     # 其他 SH ETF
     for code in ("510500", "513100", "518880", "588000"):
-        ti = parse_ticker(code)
+        ti = parse_ticker(f"{code}.A")
         assert ti.full.endswith(".SH"), f"{code} 应为 SH，实际 {ti.full}"
 
 
 def test_ticker_parser_sz_etf():
     from lib.market_router import parse_ticker, classify_security_type
     for code in ("159949", "159922", "159928"):
-        ti = parse_ticker(code)
+        ti = parse_ticker(f"{code}.A")
         assert ti.full.endswith(".SZ"), f"{code} 应为 SZ"
         assert classify_security_type(ti.code) == "etf"
 
@@ -607,17 +610,17 @@ def test_ticker_parser_sz_etf():
 def test_ticker_parser_convertible_bonds():
     from lib.market_router import parse_ticker, classify_security_type
     # SH 可转债 11xxxx
-    ti = parse_ticker("113517")
+    ti = parse_ticker("113517.A")
     assert ti.full.endswith(".SH")
     assert classify_security_type(ti.code) == "convertible_bond"
     # SZ 可转债 12xxxx
-    ti = parse_ticker("123029")
+    ti = parse_ticker("123029.A")
     assert ti.full.endswith(".SZ")
     assert classify_security_type(ti.code) == "convertible_bond"
 
 
 def test_ticker_parser_stocks_still_correct():
-    """修复 ETF 识别的同时不能破坏股票识别"""
+    """修复 ETF 识别的同时不能破坏股票识别（v-K: .A 명시로 A주 거래소 추론 검증）"""
     from lib.market_router import parse_ticker, classify_security_type
     for code, expected in [
         ("600519", ".SH"),   # 茅台
@@ -627,7 +630,7 @@ def test_ticker_parser_stocks_still_correct():
         ("301000", ".SZ"),   # 创业板注册制
         ("830799", ".BJ"),   # 北交所
     ]:
-        ti = parse_ticker(code)
+        ti = parse_ticker(f"{code}.A")
         assert ti.full.endswith(expected), f"{code} 应为 {expected}，实际 {ti.full}"
         assert classify_security_type(ti.code) == "stock"
 

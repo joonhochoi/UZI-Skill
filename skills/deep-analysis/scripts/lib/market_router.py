@@ -9,7 +9,7 @@ import re
 from dataclasses import dataclass
 from typing import Literal
 
-Market = Literal["A", "H", "U"]
+Market = Literal["A", "H", "U", "K"]
 SecurityType = Literal["stock", "etf", "lof", "convertible_bond", "mutual_fund", "unknown"]
 
 
@@ -25,6 +25,12 @@ _RE_A_NUMERIC = re.compile(r"^\d{6}$")
 _RE_A_FULL = re.compile(r"^(\d{6})\.(SZ|SH|BJ)$", re.I)
 _RE_HK = re.compile(r"^(\d{4,5})(?:\.HK)?$", re.I)
 _RE_US = re.compile(r"^[A-Z][A-Z\.\-]{0,5}$")
+
+# 한국(K) · 명시 접미사 .KS(코스피) / .KQ(코스닥)
+_RE_KR_FULL = re.compile(r"^(\d{6})\.(KS|KQ)$", re.I)
+# A주 · .A 접미사 (거래소는 _a_share_suffix 로 추론) · 순수 6자리가 K 우선으로
+# 바뀌면서, A주를 명시하려는 입력을 받기 위한 경로
+_RE_A_DOTA = re.compile(r"^(\d{6})\.A$", re.I)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -170,16 +176,36 @@ def _is_mutual_fund_code(code6: str) -> bool:
 
 
 def parse_ticker(raw: str) -> TickerInfo:
-    """Best-effort parse. For Chinese names (e.g. '水晶光电'), caller must resolve via fetch_basic first."""
+    """Best-effort parse. For Chinese names (e.g. '水晶光电') or Korean names
+    (e.g. '삼성전자'), caller must resolve via fetch_basic first.
+
+    v-K · 시장 라우팅 규칙 변경:
+    - 순수 6자리 영숫자 코드는 **K(한국) 우선** (구 A주 기본값에서 변경).
+    - A주를 명시하려면 `.A` 접미사 (`600519.A` → A, 거래소는 코드 규칙으로 추론).
+    - `.KS`(코스피) / `.KQ`(코스닥) 명시 접미사 → K.
+    - 순수 6자리 K의 full은 best-effort `.KS` · 실제 거래소는 fetch 단계에서 확정.
+    """
     s = raw.strip().upper().replace(" ", "")
 
+    # 한국(K) · 명시 접미사 .KS / .KQ
+    m = _RE_KR_FULL.match(s)
+    if m:
+        return TickerInfo(raw=raw, code=m.group(1), full=f"{m.group(1)}.{m.group(2).upper()}", market="K")
+
+    # A주 · 거래소 명시 (.SZ / .SH / .BJ)
     m = _RE_A_FULL.match(s)
     if m:
         return TickerInfo(raw=raw, code=m.group(1), full=f"{m.group(1)}.{m.group(2).upper()}", market="A")
 
+    # A주 · .A 접미사 (거래소는 _a_share_suffix 로 추론)
+    m = _RE_A_DOTA.match(s)
+    if m:
+        code = m.group(1)
+        return TickerInfo(raw=raw, code=code, full=f"{code}.{_a_share_suffix(code)}", market="A")
+
+    # 순수 6자리 → K 우선 (접미사 없으면 한국 시장)
     if _RE_A_NUMERIC.match(s):
-        suffix = _a_share_suffix(s)
-        return TickerInfo(raw=raw, code=s, full=f"{s}.{suffix}", market="A")
+        return TickerInfo(raw=raw, code=s, full=f"{s}.KS", market="K")
 
     if s.endswith(".HK"):
         code = s.removesuffix(".HK").lstrip("0") or "0"
@@ -207,6 +233,16 @@ def is_chinese_name(raw: str) -> bool:
     return any("\u4e00" <= ch <= "\u9fff" for ch in raw)
 
 
+def is_korean_name(raw: str) -> bool:
+    """True if input contains Hangul syllables (needs Korean name→code resolution).
+
+    한글 음절 범위는 U+AC00-U+D7A3 으로, is_chinese_name 이 보는 CJK 통합한자
+    범위(U+4E00-U+9FFF)와 겹치지 않는다. 따라서 '삼성전자' 는 여기서만 True.
+    """
+    return any("가" <= ch <= "힣" for ch in raw)
+
+
 if __name__ == "__main__":
-    for t in ["002273", "002273.SZ", "600519", "00700.HK", "00700", "AAPL", "BRK.B", "水晶光电"]:
+    for t in ["005930", "005930.KS", "247540.KQ", "600519.A", "002273.SZ",
+              "00700.HK", "AAPL", "BRK.B", "삼성전자", "水晶光电"]:
         print(t, "->", parse_ticker(t))
