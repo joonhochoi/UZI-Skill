@@ -22,10 +22,11 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from lib.investor_criteria import INVESTOR_RULES, Rule
+from lib.investor_criteria import INVESTOR_RULES, Rule, get_ko_msgs
 from lib.investor_knowledge import reality_check
 from lib.investor_profile import get_profile as _get_profile
 from lib.investor_db import INVESTORS as _INVESTORS
+from lib.i18n import get_language
 
 # v2.8 · 预构建 id → group 索引，用于 profile 的 group-level fallback
 _INVESTOR_GROUP_MAP: dict[str, str] = {inv["id"]: inv.get("group", "") for inv in _INVESTORS}
@@ -180,22 +181,34 @@ def evaluate(investor_id: str, features: dict) -> dict:
     weight_pass = 0
     weight_total = 0
 
+    _lang = get_language()
+
     for rule in rules:
         weight_total += rule.weight
         if _safe_check(rule, features):
             weight_pass += rule.weight
+            if _lang == "ko":
+                pass_ko, _ = get_ko_msgs(investor_id, rule.rule_id)
+                _pass_template = pass_ko or rule.pass_msg or rule.name
+            else:
+                _pass_template = rule.pass_msg or rule.name
             pass_list.append({
                 "rule_id": rule.rule_id,
                 "name": rule.name,
                 "weight": rule.weight,
-                "msg": _fmt_msg(rule.pass_msg or rule.name, features),
+                "msg": _fmt_msg(_pass_template, features),
             })
         else:
+            if _lang == "ko":
+                _, fail_ko = get_ko_msgs(investor_id, rule.rule_id)
+                _fail_template = fail_ko or rule.fail_msg or f"미달: {rule.name}"
+            else:
+                _fail_template = rule.fail_msg or f"未达{rule.name}"
             fail_list.append({
                 "rule_id": rule.rule_id,
                 "name": rule.name,
                 "weight": rule.weight,
-                "msg": _fmt_msg(rule.fail_msg or f"未达{rule.name}", features),
+                "msg": _fmt_msg(_fail_template, features),
             })
 
     # Base score from rules
@@ -276,6 +289,22 @@ def evaluate(investor_id: str, features: dict) -> dict:
 
 def _build_headline(signal: str, pass_list: list, fail_list: list) -> str:
     """One-sentence takeaway citing the top rule."""
+    _lang = get_language()
+    if _lang == "ko":
+        if signal == "bullish" and pass_list:
+            top = pass_list[0]
+            return f"매수 핵심: {top['msg']}"
+        if signal == "bearish" and fail_list:
+            top = fail_list[0]
+            return f"매도 핵심: {top['msg']}"
+        if pass_list and fail_list:
+            return f"관망: {pass_list[0]['msg']} / 다만 {fail_list[0]['msg']}"
+        if pass_list:
+            return f"중립: {pass_list[0]['msg']}"
+        if fail_list:
+            return f"중립: {fail_list[0]['msg']}"
+        return "데이터 부족, 판단 보류"
+    # zh (default)
     if signal == "bullish" and pass_list:
         top = pass_list[0]
         return f"看多核心：{top['msg']}"
@@ -295,6 +324,18 @@ def _build_headline(signal: str, pass_list: list, fail_list: list) -> str:
 def _build_rationale(signal: str, pass_list: list, fail_list: list) -> str:
     """Multi-line detailed reasoning with bullet points."""
     lines: list[str] = []
+    _lang = get_language()
+
+    if _lang == "ko":
+        if pass_list:
+            lines.append("✅ 기준 충족:")
+            for r in pass_list[:4]:
+                lines.append(f"  • [비중{r['weight']}] {r['msg']}")
+        if fail_list:
+            lines.append("❌ 기준 미달:")
+            for r in fail_list[:4]:
+                lines.append(f"  • [비중{r['weight']}] {r['msg']}")
+        return "\n".join(lines) if lines else "유효 규칙 미적중"
 
     if pass_list:
         lines.append("✅ 符合标准：")

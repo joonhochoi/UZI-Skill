@@ -1149,6 +1149,804 @@ INVESTOR_RULES: dict[str, list[Rule]] = {
 }
 
 
+# ═══════════════════════════════════════════════════════════════
+# KO_MSGS — 한국어 규칙 메시지 매핑 (v2.15.0)
+# 키: (investor_id, rule_id) → (pass_msg_ko, fail_msg_ko)
+# · 기존 중국어 pass_msg/fail_msg 는 절대 수정하지 않음 (D8 정책)
+# · {placeholder} 는 그대로 보존
+# · evaluator 에서 get_language()=="ko" 일 때 이 dict 를 먼저 조회하고,
+#   없으면 기존 중국어로 graceful fallback
+# ═══════════════════════════════════════════════════════════════
+KO_MSGS: dict[tuple[str, str], tuple[str, str]] = {
+    # ── A 그룹 · 고전 가치파 ──────────────────────────────────
+    ("buffett", "roe_5y_15"): (
+        "ROE 5년 연속 > 15% (최저 {roe_5y_min:.1f}%)",
+        "ROE 5년 최저 {roe_5y_min:.1f}%, 달성률 {roe_5y_above_15}/5회",
+    ),
+    ("buffett", "net_margin_15"): (
+        "순이익률 {net_margin:.1f}% — 고품질",
+        "순이익률 {net_margin:.1f}% — 기준 미달",
+    ),
+    ("buffett", "debt_ratio_50"): (
+        "부채비율 {debt_ratio:.0f}% — 보수적",
+        "부채비율 {debt_ratio:.0f}% — 높음",
+    ),
+    ("buffett", "fcf_positive"): (
+        "잉여현금흐름(FCF) {fcf_margin:.0f}% — 양호",
+        "잉여현금흐름 기준 미달",
+    ),
+    ("buffett", "moat_clear"): (
+        "경제적 해자 {moat_total:.0f}/40 — 확인",
+        "경제적 해자 {moat_total:.0f}/40 — 불명확",
+    ),
+    ("buffett", "safety_margin_pe"): (
+        "PER {pe} — 5년 {pe_quantile_5y} 분위 (저평가)",
+        "PER {pe} — 5년 {pe_quantile_5y} 분위, 안전마진 부족",
+    ),
+    ("buffett", "dividend_history"): (
+        "{consecutive_dividend_years}년 연속 배당",
+        "배당 연속성 {consecutive_dividend_years}년 — 부족",
+    ),
+    ("graham", "pe_under_15"): (
+        "PER {pe} < 15 — 충족",
+        "PER {pe} > 15 — 기준 초과",
+    ),
+    ("graham", "pb_under_1_5"): (
+        "PBR {pb} < 1.5 — 충족",
+        "PBR {pb} > 1.5 — 기준 초과",
+    ),
+    ("graham", "pe_pb_22_5"): (
+        "PER×PBR = {pe_x_pb:.1f} < 22.5 ✓",
+        "PER×PBR = {pe_x_pb:.1f} — 22.5 레드라인 초과",
+    ),
+    ("graham", "current_ratio_2"): (
+        "유동비율 {current_ratio:.1f} — 양호",
+        "유동비율 {current_ratio:.1f} < 2 — 미달",
+    ),
+    ("graham", "profit_10y"): (
+        "{consecutive_profit_years}년 연속 흑자",
+        "연속 흑자 {consecutive_profit_years}년 — 부족",
+    ),
+    ("graham", "dividend_history"): (
+        "{consecutive_dividend_years}년 연속 배당",
+        "배당 실적 부족",
+    ),
+    ("fisher", "industry_growing"): (
+        "{industry_lifecycle} — 성장 잠재력 있음",
+        "업종이 성장기에 있지 않음",
+    ),
+    ("fisher", "profitability"): (
+        "순이익률 {net_margin:.1f}% — 우수",
+        "순이익률 {net_margin:.1f}% — 보통",
+    ),
+    ("fisher", "moat_quality"): (
+        "경제적 해자 합산 {moat_total:.0f}점",
+        "경제적 해자 부족",
+    ),
+    ("fisher", "sell_side_confirm"): (
+        "리서치 매수 의견 {buy_rating_pct:.0f}%",
+        "리서치 매수 의견 {buy_rating_pct:.0f}% — 낮음",
+    ),
+    ("fisher", "growth_sustainable"): (
+        "매출 3Y CAGR {revenue_growth_3y_cagr:.1f}%",
+        "매출 3Y CAGR {revenue_growth_3y_cagr:.1f}% — 부족",
+    ),
+    ("munger", "simple_business"): (
+        "비즈니스 모델 비교적 명확",
+        "—",
+    ),
+    ("munger", "moat_strong"): (
+        "경제적 해자 {moat_total:.0f}/40 — 강함",
+        "경제적 해자 {moat_total:.0f}/40 — 넓지 않음",
+    ),
+    ("munger", "financial_strength"): (
+        "저부채 + 정(+) 현금흐름",
+        "재무 품질 의심",
+    ),
+    ("munger", "wait_for_price"): (
+        "PER 분위 {pe_quantile_5y} — 충분히 저렴",
+        "PER 분위 {pe_quantile_5y} — 더 저렴해질 때까지 대기",
+    ),
+    ("munger", "psych_no_mania"): (
+        "시장 심리 이성적",
+        "시장 심리 과열",
+    ),
+    ("templeton", "pe_extreme_low"): (
+        "PER 5년 {pe_quantile_5y} 분위 (역사적 저점)",
+        "PER 분위 {pe_quantile_5y} — 비관점까지 아직 멀다",
+    ),
+    ("templeton", "vs_industry_cheap"): (
+        "PER, 동종업 평균 대비 {vs_peer_avg_pe:.0f}% 낮음",
+        "PER, 동종업 평균 이상",
+    ),
+    ("templeton", "not_crowded"): (
+        "시장 열기 {sentiment_heat:.0f} — 저위",
+        "시장 열기 {sentiment_heat:.0f} — 높음",
+    ),
+    ("klarman", "margin_of_safety"): (
+        "DCF 내재가치 대비 {safety_margin:.0f}% 할인",
+        "30% 안전마진 없음",
+    ),
+    ("klarman", "downside_protected"): (
+        "하락 리스크 통제 가능",
+        "하방 보호 불충분",
+    ),
+    ("klarman", "catalyst_clear"): (
+        "근기 촉매제 {recent_events_count}개",
+        "명확한 촉매제 없음",
+    ),
+    # ── B 그룹 · 성장 투자파 ──────────────────────────────────
+    ("lynch", "peg_ideal"): (
+        "PEG ≈ {pe}/{revenue_growth_latest:.0f} < 1 (Lynch 이상값)",
+        "PEG가 Lynch 이상 구간 미달 (< 1)",
+    ),
+    ("lynch", "peg_acceptable"): (
+        "PEG ≈ {pe}/{revenue_growth_latest:.0f} · 경계 수용",
+        "PEG가 1-1.5 경계 구간 아님",
+    ),
+    ("lynch", "pe_not_rolls_royce"): (
+        "PER {pe:.0f} — 안전 구간",
+        "PER {pe:.0f} > 40 · Lynch 경계선 (Rolls Royce는 필수품이 아니다)",
+    ),
+    ("lynch", "fast_grower_zone"): (
+        "매출 증가율 {revenue_growth_latest:.0f}% · fast grower",
+        "증가율 {revenue_growth_latest:.0f}% — 20-50% 구간 이탈",
+    ),
+    ("lynch", "understandable"): (
+        "업종 이해하기 쉬움",
+        "",
+    ),
+    ("lynch", "research_support"): (
+        "리서치 {research_coverage:.0f}개 · 매수 {buy_rating_pct:.0f}%",
+        "리서치 지지 부족",
+    ),
+    ("oneill", "c_eps_growth"): (
+        "순이익 증가율 {net_profit_growth_latest:.0f}%",
+        "순이익 증가율 {net_profit_growth_latest:.0f}% < 25%",
+    ),
+    ("oneill", "a_annual_growth"): (
+        "3Y CAGR {revenue_growth_3y_cagr:.1f}%",
+        "연간 성장률 부족",
+    ),
+    ("oneill", "n_near_high"): (
+        "60일 고점 대비 {pct_from_60d_high:.1f}%",
+        "60일 고점 대비 {pct_from_60d_high:.1f}%",
+    ),
+    ("oneill", "l_industry_leader"): (
+        "업종 {industry_lifecycle}",
+        "업종 성장기 아님",
+    ),
+    ("oneill", "i_institutional"): (
+        "펀드매니저 {fund_manager_count}명 보유",
+        "기관 보유 희박",
+    ),
+    ("oneill", "m_market_trend"): (
+        "Stage 2 상승",
+        "Stage 2 아님",
+    ),
+    ("thiel", "monopoly_leader"): (
+        "경제적 해자 {moat_total:.0f}/40",
+        "독점력 부족",
+    ),
+    ("thiel", "network_effect"): (
+        "네트워크 효과 {moat_network:.0f}/10",
+        "네트워크 효과 {moat_network:.0f}/10 — 약함",
+    ),
+    ("thiel", "scale_advantage"): (
+        "규모 우위 {moat_scale:.0f}/10",
+        "규모 우위 부족",
+    ),
+    ("wood", "s_curve"): (
+        "업종 성장률 {industry_growth:.0f}% — S커브 변곡점",
+        "업종 성장률 {industry_growth:.0f}% < 20% — 너무 느림",
+    ),
+    ("wood", "innovation_platform"): (
+        "🔮 파괴적 혁신 플랫폼 해당 — ARK 투자 대상!",
+        "ARK 5대 혁신 플랫폼 해당 없음",
+    ),
+    ("wood", "revenue_acceleration"): (
+        "3년 매출 복합성장 {rev_growth_3y:.0f}% 고속성장",
+        "매출 성장률 {rev_growth_3y:.0f}% — 파괴력 부족",
+    ),
+    ("wood", "long_term_view"): (
+        "단기 변동 감내 가능, 장기 논리 불변",
+        "1Y 최대낙폭 {max_drawdown_1y:.0f}% 과대 — 혁신이라도 리스크관리 필요",
+    ),
+    ("andreessen", "software_or_ai_native"): (
+        "{industry} · 소프트웨어/AI 네이티브 트랙 — a16z '세상을 먹어치우는' 대상",
+        "소프트웨어/AI 네이티브 아님 — techno-optimist 사정거리 밖",
+    ),
+    ("andreessen", "rev_growth_30"): (
+        "3y 매출 성장 {rev_growth_3y:.0f}% · 하이퍼 성장 단계",
+        "3y 매출 성장 {rev_growth_3y:.0f}% < 30 · 하이퍼 미달",
+    ),
+    ("andreessen", "network_effects"): (
+        "경제적 해자 {moat_total:.0f}/40 · 플랫폼/네트워크 효과 확인",
+        "경제적 해자 {moat_total:.0f}/40 — 약함, 네트워크 효과 없음",
+    ),
+    ("andreessen", "market_size_huge"): (
+        "TAM 거대 · 1000배 공간 충분",
+        "TAM 불충분 · 천장 낮음",
+    ),
+    ("andreessen", "founder_led"): (
+        "창업자 여전히 주도 · founder mode",
+        "창업자 퇴장 · founder mode 소멸",
+    ),
+    ("gurley", "marketplace_or_saas"): (
+        "{industry} · marketplace/SaaS · Gurley 주전장",
+        "marketplace/SaaS 아님 · Gurley 사정거리 이탈",
+    ),
+    ("gurley", "unit_economics_positive"): (
+        "매출총이익률 {gross_margin:.0f}% + 순이익률 {net_margin:.1f}% · 단위 경제 건전",
+        "매출총이익률 {gross_margin:.0f}% / 순이익률 {net_margin:.1f}% · 단위 경제 불건전",
+    ),
+    ("gurley", "magnitude_of_demand"): (
+        "3y 매출 성장 {rev_growth_3y:.0f}% · 수요 강도 실재",
+        "성장 부족 · magnitude of demand 불충분",
+    ),
+    ("gurley", "burn_multiple_ok"): (
+        "FCF 건전 · 밑 빠진 독 소각 아님",
+        "FCF 블랙홀 · burn multiple 지속 불가",
+    ),
+    ("gurley", "valuation_reasonable"): (
+        "EV/Rev = {ev_to_revenue:.1f}x · 밸류에이션 앵커 있음",
+        "EV/Rev = {ev_to_revenue:.1f}x · 앵커 이탈",
+    ),
+    ("naval", "permissionless_leverage"): (
+        "{industry} · 코드/미디어 레버리지형 비즈니스",
+        "중자산/서비스 중심 · 복제 가능 레버리지 없음",
+    ),
+    ("naval", "specific_knowledge"): (
+        "경제적 해자 {moat_total:.0f}/40 · specific knowledge 기반",
+        "경제적 해자 {moat_total:.0f}/40 · 누구나 할 수 있음",
+    ),
+    ("naval", "long_holding_horizon"): (
+        "ROE 지속적 · 장기 복리 대상",
+        "ROE 불지속 · 단기 비즈니스",
+    ),
+    ("naval", "not_zero_sum"): (
+        "제로섬 아님 · 실질 가치 창출",
+        "제로섬/음수합 게임 · Naval 철학 밖",
+    ),
+    ("naval", "compound_interest"): (
+        "3y 순이익 성장 {net_profit_growth_3y:.0f}% · 복리 확인",
+        "순이익 복리 없음 · 장기 주의 리스트 외",
+    ),
+    ("gerstner", "ai_or_cloud_native"): (
+        "{industry} · AI/클라우드 컴퓨팅 트랙 · Altimeter 주전장",
+        "AI/클라우드 트랙 아님 · Gerstner 비중 없음",
+    ),
+    ("gerstner", "revenue_acceleration"): (
+        "YoY {rev_growth_yoy:.0f}% > 3y avg {rev_growth_3y:.0f}% · 가속 중",
+        "성장 지속 또는 감속 · 가속 단계 아님",
+    ),
+    ("gerstner", "rule_of_40"): (
+        "성장 + 순이익률 = {rev_growth_3y:.0f}+{net_margin:.0f} ≥ 40 · 우수 SaaS",
+        "성장 {rev_growth_3y:.0f} + 이익률 {net_margin:.0f} < 40 · 미달",
+    ),
+    ("gerstner", "category_leader"): (
+        "업종 #{industry_rank} · category leader",
+        "업종 #{industry_rank} · 톱티어 아님",
+    ),
+    ("gerstner", "expensive_but_growing"): (
+        "PEG {peg:.1f} 또는 성장 {rev_growth_3y:.0f}% · 비싸지만 합리적",
+        "PEG {peg:.1f} 비쌈 + 성장 부족 · 그 가격 가치 없음",
+    ),
+    ("chamath", "disruptor_thesis"): (
+        "{industry} · 파괴적 트랙 · Chamath 투자 논문 대상",
+        "전통 업종 · disruption 리스트 외",
+    ),
+    ("chamath", "tam_centibillion"): (
+        "TAM ≥ $100bn · 큰 풀",
+        "TAM 불충분 · 10x 불가",
+    ),
+    ("chamath", "path_to_profit"): (
+        "매출총이익률 {gross_margin:.0f}% · 수익화 경로 명확",
+        "매출총이익률 {gross_margin:.0f}% · 수익화 경로 불분명",
+    ),
+    ("chamath", "not_a_meme"): (
+        "매출 실재 · 순수 스토리 아님",
+        "매출 과소 · 순수 내러티브 meme에 가까움",
+    ),
+    ("chamath", "transparent_metrics"): (
+        "거버넌스 {governance_score:.0f}/10 · 공시 OK",
+        "거버넌스 {governance_score:.0f}/10 · 투명성 부족",
+    ),
+    # ── C 그룹 · 거시 헤지파 ──────────────────────────────────
+    ("soros", "sentiment_long_reflex"): (
+        "리서치 목표 상승여력 {upside_to_target:.0f}% · 시장 과도 비관 · 매수 반사성",
+        "가격이 펀더멘털 컨센서스 이상 · 매수 반사성 여지 없음",
+    ),
+    ("soros", "sentiment_short_reflex_penalty"): (
+        "리서치 목표 상승여력 {upside_to_target:.0f}% · 광기 아직 아님",
+        "리서치 목표 상승여력 {upside_to_target:.0f}% · 시장 과도 과열 · Soros 공매도 고려",
+    ),
+    ("soros", "macro_tailwind"): (
+        "금리 사이클 {macro_rate_cycle}",
+        "거시 중립",
+    ),
+    ("soros", "trend_clear"): (
+        "Stage 2 추세 확인",
+        "명확한 추세 없음",
+    ),
+    ("dalio", "rate_cycle_pos"): (
+        "{macro_rate_cycle}",
+        "금리 인하 사이클 아님",
+    ),
+    ("dalio", "low_debt"): (
+        "부채비율 {debt_ratio:.0f}%",
+        "부채비율 {debt_ratio:.0f}% — 높음",
+    ),
+    ("dalio", "dividend_income"): (
+        "배당수익률 {dividend_yield:.1f}%",
+        "배당수익률 {dividend_yield:.1f}% — 낮음",
+    ),
+    ("marks", "market_fear"): (
+        "시장 온도 {sentiment_heat:.0f}",
+        "시장 온도 {sentiment_heat:.0f} — 높음",
+    ),
+    ("marks", "cheap_vs_history"): (
+        "PER {pe_quantile_5y} 분위",
+        "PER {pe_quantile_5y} 분위 — 저렴하지 않음",
+    ),
+    ("marks", "risk_priced_in"): (
+        "최대낙폭 {max_drawdown_1y:.0f}%",
+        "리스크 충분히 반영 안됨",
+    ),
+    ("druck", "liquidity_tailwind"): (
+        "금리 {macro_rate_cycle}",
+        "유동성 불리",
+    ),
+    ("druck", "macro_theme"): (
+        "{industry_lifecycle}",
+        "명확한 매크로 테마 없음",
+    ),
+    ("druck", "high_conviction"): (
+        "리서치 2026 EPS 예상 성장 {consensus_growth_to_2026:.0f}%",
+        "미래 성장 불명확",
+    ),
+    ("robertson", "best_in_class"): (
+        "업종 {industry_rank}위",
+        "업종 선두 아님",
+    ),
+    ("robertson", "fundamentals_strong"): (
+        "ROE {roe_latest:.1f}% 순이익률 {net_margin:.1f}%",
+        "펀더멘털 평범",
+    ),
+    ("burry", "not_in_bubble_basket"): (
+        "PER {pe_ttm:.0f} · PS {ps:.1f} · Burry 공매도 리스트 없음",
+        "PER {pe_ttm:.0f} · PS {ps:.1f} · 밸류에이션 버블 위험",
+    ),
+    ("burry", "insider_not_selling"): (
+        "최근 임원 매도 없음 · 내부 신호 OK",
+        "최근 임원 매도 · Burry 공매도 신호",
+    ),
+    ("burry", "debt_not_explosive"): (
+        "부채비율 {debt_ratio:.0f}% · 폭발 위험 없음",
+        "부채비율 {debt_ratio:.0f}% · 위험 신호",
+    ),
+    ("burry", "not_retail_mania"): (
+        "개인 보유 비중 {retail_holding_pct:.0f}% · 광기 없음",
+        "개인 보유 비중 {retail_holding_pct:.0f}% · meme 위험",
+    ),
+    ("burry", "fcf_real_not_eps"): (
+        "FCF 건전 {fcf_margin:.0f}% · 이익 실재",
+        "FCF 약함 · 회계 이익 분식 가능성",
+    ),
+    ("chanos", "not_promotional_ceo"): (
+        "CEO X/미디어 과도 홍보 없음",
+        "CEO 과도 홍보 · Chanos 공매도 전형 신호",
+    ),
+    ("chanos", "audited_clean"): (
+        "감사 clean · 적정의견",
+        "감사 의견 한정 · 즉시 의심",
+    ),
+    ("chanos", "cash_matches_eps"): (
+        "OCF/순이익 {ocf_to_net_income_ratio:.1f} · 비율 합리적",
+        "OCF/순이익 {ocf_to_net_income_ratio:.1f} · 대폭 괴리 · 회계 이익 가능성",
+    ),
+    ("chanos", "not_china_concept"): (
+        "미국 상장 중국계 아님 · Chanos 블랙리스트 제외",
+        "미국 상장 중국계 · 역사적 공매도 대상",
+    ),
+    ("chanos", "debt_disclosure_clean"): (
+        "부외 부채 비율 낮음 · 명확",
+        "부외 부채 {off_balance_debt_ratio:.0%} · 위험",
+    ),
+    # ── D 그룹 · 기술 추세파 ──────────────────────────────────
+    ("livermore", "stage_2"): (
+        "Stage 2 상승",
+        "Stage {stage_num} — 상승기 아님",
+    ),
+    ("livermore", "ma_bull"): (
+        "이동평균 상승 배열",
+        "이동평균 상승 배열 아님",
+    ),
+    ("livermore", "volume_confirm"): (
+        "고점 근방, 과매수 아님",
+        "위치 불리",
+    ),
+    ("minervini", "stage_2_only"): (
+        "Stage 2 ✓",
+        "Stage 2 아님, 매매 안 함",
+    ),
+    ("minervini", "ma_stack"): (
+        "MA 상승 스택",
+        "MA 스택 미형성",
+    ),
+    ("minervini", "near_high"): (
+        "고점 대비 {pct_from_60d_high:.0f}%",
+        "고점 대비 {pct_from_60d_high:.0f}% — 너무 멀다",
+    ),
+    ("minervini", "ytd_strong"): (
+        "YTD +{ytd_return:.0f}%",
+        "YTD {ytd_return:.0f}% — 약세",
+    ),
+    ("minervini", "not_overbought"): (
+        "RSI {rsi:.0f}",
+        "RSI {rsi:.0f} — 심각한 과매수",
+    ),
+    ("darvas", "box_breakout"): (
+        "Stage 2 돌파",
+        "상승 박스권 아님",
+    ),
+    ("darvas", "ma_support"): (
+        "MA 지지",
+        "MA 지지 없음",
+    ),
+    ("gann", "trend_up"): (
+        "추세 상승",
+        "추세 불리",
+    ),
+    ("gann", "volatility_normal"): (
+        "연간 변동성 {volatility_1y:.0f}%",
+        "변동성 {volatility_1y:.0f}% — 너무 높음",
+    ),
+    # ── E 그룹 · 중국 가치투자파 ─────────────────────────────
+    ("duan", "good_business"): (
+        "순이익률 {net_margin:.1f}% · ROE {roe_latest:.1f}%",
+        "비즈니스 품질 보통",
+    ),
+    ("duan", "good_people"): (
+        "지배구조 깨끗함",
+        "지배구조 흠결 있음",
+    ),
+    ("duan", "good_price"): (
+        "PER {pe_quantile_5y} 분위",
+        "가격 부적절, PER {pe_quantile_5y} 분위",
+    ),
+    ("duan", "pe_not_expensive"): (
+        "PER {pe:.0f} — 적정 가격",
+        "PER {pe:.0f} — 너무 비쌈",
+    ),
+    ("duan", "long_term_clear"): (
+        "비즈니스 모델 10년 가시성 있음",
+        "10년 후 전망 불명확",
+    ),
+    ("zhangkun", "roe_persistent"): (
+        "ROE 5년 {roe_5y_above_15}/5회 > 15%",
+        "ROE 지속성 {roe_5y_above_15}/5회",
+    ),
+    ("zhangkun", "pricing_power"): (
+        "순이익률 {net_margin:.1f}% — 가격결정력 있음",
+        "순이익률 {net_margin:.1f}% — 가격결정력 없음",
+    ),
+    ("zhangkun", "moat_brand"): (
+        "무형자산 {moat_intangible:.0f}/10",
+        "브랜드 해자 약함",
+    ),
+    ("zhangkun", "pe_discipline"): (
+        "PER {pe:.0f} — 밸류에이션 기준 충족",
+        "PER {pe:.0f} — 역대 보유 밸류에이션 상한 초과",
+    ),
+    ("zhushaoxing", "long_term_growth"): (
+        "3Y CAGR {revenue_growth_3y_cagr:.1f}%",
+        "장기 성장 부족",
+    ),
+    ("zhushaoxing", "industry_momentum"): (
+        "업종 {industry_lifecycle}",
+        "업종 성장기 아님",
+    ),
+    ("zhushaoxing", "low_turnover_fit"): (
+        "변동성 {volatility_1y:.0f}% — 장기보유 적합",
+        "변동성 과대",
+    ),
+    ("xiezhiyu", "garp_balance"): (
+        "PEG 적정",
+        "PEG 불균형",
+    ),
+    ("xiezhiyu", "growth_minimum"): (
+        "매출 증가율 {revenue_growth_latest:.1f}%",
+        "성장률 부족",
+    ),
+    ("fengliu", "good_odds"): (
+        "PER 분위 {pe_quantile_5y} · 낙폭 {max_drawdown_1y:.0f}%",
+        "배당률(Odds) 부족",
+    ),
+    ("fengliu", "expectation_gap"): (
+        "기대 격차 {upside_to_target:.0f}%",
+        "기대 격차 크지 않음",
+    ),
+    ("fengliu", "common_sense"): (
+        "상식 판단 OK",
+        "상식 의심",
+    ),
+    ("dengxiaofeng", "cycle_position"): (
+        "설비 사이클 위치 {industry_lifecycle}",
+        "사이클 위치 불리",
+    ),
+    ("dengxiaofeng", "value_creation"): (
+        "가치 창출 ROIC/ROE 달성",
+        "가치 창출 부족",
+    ),
+    ("dengxiaofeng", "pe_reasonable"): (
+        "PER {pe:.0f} — 스타일 부합",
+        "PER {pe:.0f} 과고 — 역좌파 스타일에 맞지 않음",
+    ),
+    ("dengxiaofeng", "good_price"): (
+        "PER 분위 {pe_quantile_5y}",
+        "PER 분위 {pe_quantile_5y} — 고평가",
+    ),
+    ("zhang_lei", "long_runway_industry"): (
+        "{industry} · 장기 성장 트랙 · Hillhouse 주전장",
+        "{industry} · 단기 사이클 · Hillhouse thesis 외",
+    ),
+    ("zhang_lei", "category_leader_moat"): (
+        "업종 #{industry_rank} · 해자 {moat_total:.0f}/40 · 시간의 친구",
+        "세부 선두 아님 또는 해자 약함 · 포트폴리오 대상 아님",
+    ),
+    ("zhang_lei", "founder_aligned"): (
+        "창업자 보유/재임 · 장기 정렬 가능",
+        "창업자 퇴장 · 장기 정렬 상실",
+    ),
+    ("zhang_lei", "compounder_track_record"): (
+        "ROE 5y / 순이익 3y 복리 · 역사적으로 검증",
+        "복리 track record 부족",
+    ),
+    ("zhang_lei", "not_just_cyclical"): (
+        "순수 사이클 아님 · 장기보유 적합",
+        "{industry} · 순수 사이클 · Hillhouse 스타일 아님",
+    ),
+    # ── F 그룹 · A주 유동 세력파 (공통 규칙 중복 반영) ──────────
+    # 공통 규칙은 투자자 ID와 무관하게 동일 메시지이므로 각 ID별 등록
+    # stage_2: 모든 stage_2 rule_id
+    **{
+        (inv, "stage_2"): (
+            "Stage 2 상승 중",
+            "Stage 2 아님",
+        )
+        for inv in [
+            "zhang_mz", "sun_ge", "zhao_lg", "yangjia", "chen_xq",
+            "hu_jl", "fang_xx", "zuoshou", "xiao_ey", "jiao_yy",
+            "mao_lb", "xiao_xian", "liuyi_zl", "gu_bl", "wang_zr",
+        ]
+    },
+    **{
+        (inv, "lhb_hot"): (
+            "30일 상위 {lhb_30d_count:.0f}회 — 용호방 등록",
+            "최근 30일 미등록",
+        )
+        for inv in [
+            "zhang_mz", "zhao_lg", "fs_wyj", "yangjia", "chen_xq",
+            "hu_jl", "zuoshou", "lasa", "chengdu", "sunan",
+            "ningbo_st", "liu_sh", "bj_cj", "xin_dd",
+        ]
+    },
+    **{
+        (inv, "top_of_sector"): (
+            "업종 {industry_rank}위",
+            "업종 대장주 아님",
+        )
+        for inv in [
+            "zhang_mz", "sun_ge", "zhao_lg", "chen_xq",
+            "zuoshou", "jiao_yy", "xiao_xian", "liuyi_zl", "gu_bl",
+        ]
+    },
+    **{
+        (inv, "sentiment_hot"): (
+            "열기 {sentiment_heat:.0f}",
+            "열기 {sentiment_heat:.0f} — 부족",
+        )
+        for inv in [
+            "zhang_mz", "sun_ge", "zhao_lg", "fs_wyj", "yangjia",
+            "chen_xq", "hu_jl", "fang_xx", "zuoshou", "xiao_ey",
+            "jiao_yy", "mao_lb", "xiao_xian", "lasa", "chengdu",
+            "sunan", "ningbo_st", "liuyi_zl", "liu_sh", "gu_bl",
+            "bj_cj", "wang_zr", "xin_dd",
+        ]
+    },
+    ("xiao_ey", "fundamentals_ok"): (
+        "ROE {roe_latest:.1f}%",
+        "펀더멘털 기준 미달",
+    ),
+    # ghzw (股海贼王)
+    ("ghzw", "mainline_theme"): (
+        "주선 테마+촉매 완비 · 열기 {sentiment_heat:.0f} · 복기 3문 답 가능",
+        "현재 주선 외 · 테마 촉매 없음",
+    ),
+    ("ghzw", "limit_up_gene"): (
+        "30일 용호방/상한가 활성 {lhb_30d_count:.0f}회 · 연속 매수 기반 있음",
+        "상한가 DNA 없음 · 연속 매수 발판 없음",
+    ),
+    ("ghzw", "strong_tape"): (
+        "Stage 2 + 매물 소화 양호 · 횡보 구간도 매수 가능",
+        "시세판 약세 · 약세→강세 미확인",
+    ),
+    ("ghzw", "low_position_logic"): (
+        "연고점 대비 {pct_from_year_high:.0f}% · 저점+논리 확실=폭발력 충분",
+        "위치 낮지 않거나 논리 불확실",
+    ),
+    ("ghzw", "era_carrier"): (
+        "{industry} · 시대적 테마 · 3~5배 종목인데 왜 무서운가, 왜 통 크게 못 하나",
+        "시대급 테마 아님 · 단기 매매는 가능, 격국 얘기는 아님",
+    ),
+    ("ghzw", "liquidity_exit"): (
+        "거래 활성화 · 청산 가능",
+        "유동성 부족 · 1번 보유 비중 50%인데 청산 불가 종목은 안 한다",
+    ),
+    # ── G 그룹 · 퀀트 시스템파 ──────────────────────────────
+    ("simons", "statistical_edge"): (
+        "YTD +{ytd_return:.0f}%",
+        "YTD 음수 수익률",
+    ),
+    ("simons", "volatility_tradeable"): (
+        "변동성 {volatility_1y:.0f}% — 매매 적합",
+        "변동성 매매 부적합",
+    ),
+    ("thorp", "positive_ev"): (
+        "목표 프리미엄 {upside_to_target:.0f}% → EV > 0",
+        "EV 0에 근접",
+    ),
+    ("thorp", "kelly_ok"): (
+        "변동성 통제 가능",
+        "변동성 과대",
+    ),
+    ("shaw", "quality_factor"): (
+        "ROE {roe_latest:.1f}% — 품질 양호",
+        "품질 팩터 약함",
+    ),
+    ("shaw", "value_factor"): (
+        "PER 분위 {pe_quantile_5y}",
+        "가치 팩터 약함",
+    ),
+    ("shaw", "momentum_factor"): (
+        "Stage 2 모멘텀",
+        "모멘텀 부족",
+    ),
+    ("shaw", "growth_factor"): (
+        "3Y CAGR {revenue_growth_3y_cagr:.1f}%",
+        "성장 팩터 약함",
+    ),
+    ("asness", "value_factor"): (
+        "PER {pe_ttm:.0f} + PBR {pb:.1f} · 가치 팩터 점수 높음",
+        "PER {pe_ttm:.0f} + PBR {pb:.1f} · 가치 팩터 점수 낮음",
+    ),
+    ("asness", "quality_factor"): (
+        "ROE {roe:.1f}% + 부채비율 {debt_ratio:.0f}% · 품질 팩터 점수 높음",
+        "ROE {roe:.1f}% + 부채비율 {debt_ratio:.0f}% · 품질 팩터 점수 낮음",
+    ),
+    ("asness", "momentum_factor"): (
+        "YTD {ytd_return:.1f}% · MA200 위 · 모멘텀 점수 높음",
+        "YTD {ytd_return:.1f}% · 모멘텀 부족",
+    ),
+    ("asness", "profitability_consistent"): (
+        "ROE 5y 최저 {roe_5y_min:.1f}% · 안정적",
+        "ROE 5y 최저 {roe_5y_min:.1f}% · 불안정",
+    ),
+    ("asness", "not_lottery_ticket"): (
+        "PER {pe_ttm:.0f} 합리적 · 복권주 아님",
+        "PER 이상 · 복권주 특성 · Asness 논문 공매도 대상",
+    ),
+    # ── I 그룹 · AI 핵심 병목 ────────────────────────────────
+    ("serenity", "ai_chain_hit"): (
+        "AI 체인 핵심 포착 {ai_chain_keywords}",
+        "AI 산업 체인 외 — 내게 의미 없음",
+    ),
+    ("serenity", "chokepoint_strong"): (
+        "AI 병목 점수 {ai_chokepoint_score} — 목을 잡았다",
+        "AI 병목 점수 {ai_chokepoint_score} — 병목 충분히 강하지 않음",
+    ),
+    ("serenity", "irreplaceable"): (
+        "전환비용+규모 장벽 높음, 대체 어려움 (No substrate, no device)",
+        "대체 가능성 높음, 3개 업체 다 공급 가능 — 진짜 병목 아님",
+    ),
+    ("serenity", "smallcap_elastic"): (
+        "시가총액 {market_cap_yi:.0f}억, 병목 실현 탄력성 큼 · grossly mispriced",
+        "시가총액 {market_cap_yi:.0f}억 — 편향 크거나 체인 외, 탄력성 제한",
+    ),
+    ("serenity", "demand_inflection"): (
+        "수요측 변곡점 신호, 기관 rotation 도래",
+        "명확한 수요 변곡점/하드 검증 없음",
+    ),
+    # ── H 그룹 · AI 기술 리더파 ──────────────────────────────
+    ("jensen_huang", "ai_compute_demand"): (
+        "{industry} · AI 컴퓨팅 체인 — Jensen 핵심",
+        "AI 컴퓨팅 체인 외 · Jensen 시각 없음",
+    ),
+    ("jensen_huang", "cuda_ecosystem_proxy"): (
+        "생태계 결합 깊음 · 해자 {moat_total:.0f}/40",
+        "생태계 핵심 아님 · 쉽게 대체됨",
+    ),
+    ("jensen_huang", "data_center_capex_beneficiary"): (
+        "YoY {rev_growth_yoy:.0f}% · 데이터센터 Capex 직접 수혜",
+        "성장 {rev_growth_yoy:.0f}% · Capex 수혜 미흡",
+    ),
+    ("jensen_huang", "gross_margin_strong"): (
+        "매출총이익률 {gross_margin:.0f}% · 가격결정력 강함",
+        "매출총이익률 {gross_margin:.0f}% · 가격결정력 부족",
+    ),
+    ("jensen_huang", "light_speed_moore_compliant"): (
+        "R&D 강도 {rd_intensity:.0f}% · 반복 속도 OK",
+        "R&D 강도 {rd_intensity:.0f}% · Jensen 속도 미달",
+    ),
+    ("musk", "first_principles_industry"): (
+        "{industry} · 제1원리 접근에 적합",
+        "{industry} · Musk 제1원리 파괴 대상 아님",
+    ),
+    ("musk", "vertical_integration"): (
+        "수직 계열화 명확 · 비용 구조 통제 가능",
+        "외주/분산 · Musk 스타일 아님",
+    ),
+    ("musk", "manufacturing_scale"): (
+        "매출 ≥ 100억 · 양산 단계 진입",
+        "매출 소규모 · 양산 규모 미달",
+    ),
+    ("musk", "not_legacy_oem"): (
+        "전통 OEM 아님 · 변혁 측",
+        "{industry} · 전통 OEM · Musk 비관적",
+    ),
+    ("musk", "ceo_visible"): (
+        "경영진 발언권 있음 · thesis 설명 가능",
+        "경영진 침묵 · Musk 선호 아님",
+    ),
+    ("altman", "agi_supply_chain"): (
+        "{industry} · AGI 수혜 방향",
+        "{industry} · AGI 직접 전달 안됨",
+    ),
+    ("altman", "scaling_laws_compliant"): (
+        "성장/Capex 증가 · scaling laws 수혜",
+        "성장/Capex 증가 부족 · scaling 수혜 없음",
+    ),
+    ("altman", "platform_or_infra"): (
+        "해자 {moat_total:.0f}/40 · 플랫폼/인프라 포지셔닝",
+        "해자 {moat_total:.0f}/40 · 응용 레이어 편향 · GPT-N에 파괴 취약",
+    ),
+    ("altman", "energy_or_compute_bottleneck"): (
+        "{industry} · AGI 병목 카드",
+        "AGI 병목 아님 · Altman 별로 안 봄",
+    ),
+    ("altman", "not_pure_consumer_app"): (
+        "순수 응용 레이어 아님 · 한 층 더 깊음 · GPT-N 파괴 저항",
+        "{industry} · 순수 응용 레이어 · GPT-N 파괴 취약",
+    ),
+    ("saylor", "btc_or_digital_asset_exposure"): (
+        "{industry} · BTC/디지털 자산 직접 노출",
+        "BTC 노출 없음 · Saylor 안 봄",
+    ),
+    ("saylor", "treasury_strategy_signal"): (
+        "현금/BTC 충분 · 인플레이션 헤지 자산 배분",
+        "재무 전략 불명확 · Saylor 무관심",
+    ),
+    ("saylor", "not_just_eps_play"): (
+        "매출 비제로 · 순수 EPS 회계 기술 아님",
+        "매출 과소 · 순수 EPS 회계 기술 · Saylor 비관적",
+    ),
+    ("saylor", "hard_money_thesis"): (
+        "부채비율 {debt_ratio:.0f}% · BTC 레버리지 추가 가능",
+        "부채비율 {debt_ratio:.0f}% · 레버리지 한도 초과",
+    ),
+    ("saylor", "fiat_devaluation_beneficiary"): (
+        "{industry} · 법정화폐 가치하락 수혜",
+        "법정화폐 가치하락 수혜 리스트 외",
+    ),
+}
+
+
+def get_ko_msgs(investor_id: str, rule_id: str) -> tuple[str, str]:
+    """한국어 pass/fail 메시지 반환. 없으면 ('', '') 반환."""
+    return KO_MSGS.get((investor_id, rule_id), ("", ""))
+
+
 def coverage_stats() -> dict:
     return {
         "total_investors": len(INVESTOR_RULES),
