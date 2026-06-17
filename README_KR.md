@@ -189,6 +189,19 @@ agent가 자동으로 `--remote`로 Cloudflare Tunnel을 시작해서, `https://
 /stock-deep-analyzer:analyze-stock AAPL
 ```
 
+### 🇰🇷 한국 주식 (KOSPI/KOSDAQ)
+
+한국 종목도 지원합니다. 리포트는 **한국어 + 원화(₩)** 로 출력됩니다.
+
+```
+/stock-deep-analyzer:analyze-stock 삼성전자      # 한글명
+/stock-deep-analyzer:analyze-stock 005930        # 순수 6자리 = 한국 우선
+/stock-deep-analyzer:analyze-stock 247540.KQ     # 코스닥 (.KS 코스피 / .KQ 코스닥)
+```
+
+> 접미사 없는 6자리는 **한국 종목 우선**입니다. 중국 A주는 `.A`(예 `600519.A`)로 명시하세요.
+> 데이터는 네이버 증권 + DART(전자공시)에서 가져옵니다. DART 연동에는 `.env`의 `DART_APIKEY`(opendart.fss.or.kr 무료 발급)가 필요합니다.
+
 ### 특화 명령어
 
 > 모두 `/stock-deep-analyzer:` 접두사를 붙여야 실행이 보장됩니다.

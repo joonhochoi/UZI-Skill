@@ -242,6 +242,25 @@ Playwright로도 잡지 못하는 차원은 · WebSearch / mx_api / 상식으로
 5. 살돈판(杀猪盘) 등급
 6. 리포트 경로 (또는 `--remote` 공개 링크)
 
+## 🇰🇷 한국 시장(K) 지원
+
+한국(KOSPI/KOSDAQ) 종목도 분석 가능. 중국 A/H·미국 U와 동일한 22차원 + 66 심사위원 파이프라인을 탄다.
+
+```bash
+python run.py 005930 --depth lite --no-browser     # 순수 6자리 = K 우선 (삼성전자)
+python run.py 삼성전자 --depth medium --no-browser  # 한글명 → 네이버 ac 자동완성 resolve
+python run.py 247540.KQ --no-browser               # 코스닥 명시 (.KS 코스피 / .KQ 코스닥)
+python run.py 600519.A --no-browser                # ⚠️ A주(중국)는 .A 접미사로 명시
+```
+
+- **시장 라우팅**: 접미사 없는 6자리는 **K 우선**(중국 A주는 `.A` 필요). `--market {A,H,U,K}` 강제 가능.
+- **데이터 소스**: 네이버 증권 신 JSON API(`m.stock.naver.com/api` 등) + DART OpenAPI(`.env`의 `DART_APIKEY` 필요). akshare 무관.
+- **출력 언어**: K 종목은 `UZI_LANG=ko` 자동 → 평가위원 코멘트·라벨·통화(₩) 한국어. **D8: 기존 중국어 출력부는 수정 금지**, 한국어는 별도 출력부(`PERSONAS_KO`/`KO_MSGS`/`locale_ko`)로만.
+- **K 미적용**: `16_lhb`(용호방)·`19_contests`(설구) skip, F조(游资) 심사위원 자동 skip(scope=A). role-play 시 F조에 평어 쓰지 말 것.
+- **심층 경로(Step 3) role-play**: K 종목이면 `language_instruction("ko")`가 system에 들어가 한국어로 작성. agent_analysis.json 의 코멘트도 한국어.
+- **테스트 러너 주의**: RTK가 pytest 출력을 한글 mojibake로 "No tests collected" 오보 → K 테스트는 hermes venv pytest(`AppData/Local/hermes/hermes-agent/venv/Scripts/pytest.exe`) 직접 호출.
+- 상세: `CLAUDE_KR.md` · `new_dev_plan.md`(Phase 1~7 + 회고) · `need_info_type.md`(데이터 명세).
+
 ## 빠른 모드
 
 사용자가 "빠른 분석" 또는 "자세히 안 해도 돼"라고 말하면 → `run.py`로 한 번에 돌리고, agent 분석은 하지 않음. 빠르지만 거침.
