@@ -30,7 +30,7 @@ class DataSource:
     id: str                         # stable short id, e.g. "aastocks_quote"
     name_cn: str                    # Chinese display name
     base_url: str                   # root or example endpoint
-    markets: tuple[str, ...]        # "A", "H", "U"
+    markets: tuple[str, ...]        # "A", "H", "U", "K"(한국)
     dims: tuple[str, ...]           # dimension keys this source can help fill
     tier: int                       # 1 HTTP primary, 2 Playwright, 3 official disclosure
     access: str                     # "http" | "akshare" | "mx_api" | "playwright" | "ddgs"
@@ -349,6 +349,81 @@ _TIER1: list[DataSource] = [
         "同花顺实时快讯列表 · 68KB HTML 解析 · 财经/行情/行业快讯聚合"
     ),
     # 腾讯期货（已有 tencent_qt tencent_hk_quote · 期货用相同 endpoint 不同参数）· 不重复登记
+
+    # ── 한국 시장(K) · 네이버 증권 신 API + DART (2026-06 실측 검증) ──
+    DataSource(
+        "naver_integration", "네이버 증권 integration",
+        "https://m.stock.naver.com/api/stock/005930/integration",
+        ("K",),
+        ("0_basic", "10_valuation", "12_capital_flow", "4_peers", "6_research"),
+        1, "http", "known_good",
+        "K 통합 스냅샷 · 시세/PER/PBR/EPS/BPS/배당/외인소진율/52주 + 투자자별 순매수 + "
+        "industryCode/industryCompareInfo(동종) + consensusInfo(목표가/투자의견). lib/kr_data_sources.py"
+    ),
+    DataSource(
+        "naver_basic", "네이버 증권 basic",
+        "https://m.stock.naver.com/api/stock/005930/basic",
+        ("K",),
+        ("0_basic", "2_kline"),
+        1, "http", "known_good",
+        "K 실시간 시세 + 거래소 구분(KS 코스피/KQ 코스닥) + 통화(KRW). 순수 6자리 실거래소 확정용"
+    ),
+    DataSource(
+        "naver_finance", "네이버 증권 재무제표",
+        "https://m.stock.naver.com/api/stock/005930/finance/annual",
+        ("K",),
+        ("1_financials",),
+        1, "http", "known_good",
+        "K 연간/분기 재무 매트릭스(매출/영업이익/순이익/ROE/부채비율/EPS/BPS) + 컨센서스 미래열(억원)"
+    ),
+    DataSource(
+        "naver_chart", "네이버 증권 차트 OHLCV",
+        "https://api.stock.naver.com/chart/domestic/item/005930/day",
+        ("K",),
+        ("2_kline",),
+        1, "http", "known_good",
+        "K K선 float OHLCV + 외국인보유율 대량 · day/week/month · 지표는 pandas 자체 계산"
+    ),
+    DataSource(
+        "naver_industry", "네이버 증권 업종",
+        "https://m.stock.naver.com/api/stocks/industry/278",
+        ("K",),
+        ("7_industry", "4_peers", "0_basic"),
+        1, "http", "known_good",
+        "K 업종코드→업종명(groupInfo.name) + 업종 내 종목 리스트. industryCode 로 lookup"
+    ),
+    DataSource(
+        "naver_research", "네이버 증권 리서치",
+        "https://m.stock.naver.com/api/research/stock/005930",
+        ("K",),
+        ("6_research",),
+        1, "http", "known_good",
+        "K 증권사 종목분석 리포트(증권사/작성일/목표가 텍스트). 컨센서스는 integration.consensusInfo 보조"
+    ),
+    DataSource(
+        "naver_news_kr", "네이버 증권 종목뉴스",
+        "https://m.stock.naver.com/api/news/stock/005930",
+        ("K",),
+        ("15_events", "17_sentiment"),
+        1, "http", "known_good",
+        "K 종목 뉴스(언론사/제목/본문/원문 URL)"
+    ),
+    DataSource(
+        "naver_ac", "네이버 증권 자동완성(이름→코드)",
+        "https://ac.stock.naver.com/ac",
+        ("K",),
+        ("0_basic",),
+        1, "http", "known_good",
+        "K 한글 종목명 → 코드/거래소 해석. resolve_korean_name. ?q={name}&target=stock&st=111"
+    ),
+    DataSource(
+        "dart_opendart", "DART 电子공시 OpenAPI",
+        "https://opendart.fss.or.kr/api/",
+        ("K",),
+        ("11_governance", "15_events", "1_financials", "6_fund_holders"),
+        1, "http", "known_good",
+        "K 지배구조(최대주주/임원) + 공시 + 정밀재무(account_id) · DART_APIKEY 필요(.env) · corpCode 매핑 캐시"
+    ),
 ]
 
 # ═══════════════════════════════════════════════════════════════

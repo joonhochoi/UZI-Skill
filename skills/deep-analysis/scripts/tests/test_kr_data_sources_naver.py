@@ -263,3 +263,21 @@ def test_merge_basic_handles_empty_inputs():
     from lib.kr_data_sources import merge_basic
     out = merge_basic({}, {})
     assert out["market"] == "K"               # 빈 입력도 raise 안 함
+
+
+# ─── industry 업종명 + peers (Phase 7) ──────────────────────────────
+def test_parse_integration_industry_code_and_compare():
+    from lib.kr_data_sources import parse_integration
+    out = parse_integration(_load("naver_integration_005930.json"))
+    assert str(out["industry_code"]) == "278"
+    comp = out["industry_compare"]
+    assert len(comp) >= 1
+    assert comp[0]["name"] == "SK하이닉스"
+    assert comp[0]["code"] == "000660"
+    assert comp[0]["market_cap_raw"] == 1697657033.0
+
+
+def test_parse_industry_name():
+    from lib.kr_data_sources import parse_industry_name
+    name = parse_industry_name(_load("naver_industry_278.json"))
+    assert name == "반도체와반도체장비"

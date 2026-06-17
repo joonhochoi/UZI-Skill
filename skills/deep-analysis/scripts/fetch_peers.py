@@ -43,6 +43,29 @@ def main(ticker: str) -> dict:
     peer_table: list = []
     peer_comparison: list = []
 
+    # K · 네이버 industryCompareInfo(동종) → 4_peers
+    if ti.market == "K":
+        try:
+            from lib.kr_data_sources import naver_integration, to_peers_dim
+            inte = naver_integration(ti.code)
+            dim = to_peers_dim(
+                inte.get("industry_compare") or [],
+                self_code=ti.code, self_name=basic.get("name") or ti.code,
+                self_mcap_raw=basic.get("market_cap_yi"),
+                industry=industry or basic.get("industry"),
+            )
+            return {
+                "ticker": ti.full, "data": dim,
+                "source": "naver:industryCompareInfo",
+                "fallback": not bool(dim.get("peer_table")),
+            }
+        except Exception as e:
+            return {
+                "ticker": ti.full,
+                "data": {"_err": f"{type(e).__name__}: {str(e)[:120]}", "peer_table": []},
+                "source": "naver", "fallback": True,
+            }
+
     # v2.5 · HK 分支：用 akshare HK valuation/scale comparison 给出 rank-in-HK-universe，
     # 没有具体同行名单（akshare 港股没有按行业列表函数；agent 可走 AASTOCKS Playwright 兜底）
     if ti.market == "H":

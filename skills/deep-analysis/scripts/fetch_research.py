@@ -51,6 +51,25 @@ def _fetch_cninfo_forecast(code: str) -> list[dict]:
 
 def main(ticker: str) -> dict:
     ti = parse_ticker(ticker)
+    if ti.market == "K":
+        # K · 네이버 증권사 리포트 + 컨센서스 목표주가 → 6_research
+        try:
+            from lib.kr_data_sources import naver_research, naver_integration, to_research_dim
+            res = naver_research(ti.code)
+            inte = naver_integration(ti.code)
+            dim = to_research_dim(res, inte.get("consensus_price_target"),
+                                  inte.get("consensus_recomm"))
+            return {
+                "ticker": ti.full, "data": dim,
+                "source": "naver:research + consensus",
+                "fallback": not bool(dim.get("report_count")),
+            }
+        except Exception as e:
+            return {
+                "ticker": ti.full,
+                "data": {"_err": f"{type(e).__name__}: {str(e)[:120]}", "report_count": 0},
+                "source": "naver", "fallback": True,
+            }
     if ti.market != "A":
         return {"ticker": ti.full, "data": {"report_count": 0}, "source": "n/a", "fallback": True}
 

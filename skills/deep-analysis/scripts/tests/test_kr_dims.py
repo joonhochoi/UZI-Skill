@@ -83,3 +83,37 @@ def test_to_governance_dim():
     assert dim["executives_count"] >= 9
     # 한국엔 질권(pledge) 공개 제도 다름 → 빈 리스트 (점수 로직 호환)
     assert dim["pledge"] == []
+
+
+# ─── 4_peers (Phase 7) ──────────────────────────────────────────────
+def test_to_peers_dim():
+    from lib.kr_data_sources import parse_integration, to_peers_dim
+    inte = parse_integration(_load("naver_integration_005930.json"))
+    dim = to_peers_dim(inte["industry_compare"], self_code="005930",
+                       self_name="삼성전자", self_mcap_raw=20052736.0,
+                       industry="반도체와반도체장비")
+    pt = dim["peer_table"]
+    assert len(pt) >= 2
+    # 자기 자신 포함 + is_self 플래그
+    selfrow = [p for p in pt if p.get("is_self")]
+    assert len(selfrow) == 1 and selfrow[0]["code"] == "005930"
+    # 동종 종목 포함
+    assert any(p["name"] == "SK하이닉스" for p in pt)
+    assert dim["industry"] == "반도체와반도체장비"
+
+
+# ─── 6_research consensus (Phase 7) ─────────────────────────────────
+def test_parse_integration_consensus():
+    from lib.kr_data_sources import parse_integration
+    out = parse_integration(_load("naver_integration_005930.json"))
+    assert out["consensus_price_target"] == 443750.0
+    assert out["consensus_recomm"] == 4.04
+
+
+def test_to_research_dim_consensus_target_priority():
+    from lib.kr_data_sources import parse_research, to_research_dim
+    res = parse_research(_load("naver_research_005930.json"))
+    dim = to_research_dim(res, consensus_target=443750.0, consensus_recomm=4.04)
+    assert dim["report_count"] >= 1
+    assert dim["target_price_avg"] == 443750.0     # consensus 우선
+    assert dim["consensus_recomm"] == 4.04

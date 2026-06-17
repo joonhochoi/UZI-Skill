@@ -166,6 +166,17 @@ def parse_integration(raw: dict) -> dict:
     out["year_high_52w"] = _parse_kr_number(ti.get("highPriceOf52Weeks"))
     out["year_low_52w"] = _parse_kr_number(ti.get("lowPriceOf52Weeks"))
     out["deal_trend"] = [_norm_deal_trend_row(r) for r in (raw.get("dealTrendInfos") or [])]
+    # 컨센서스 (목표주가 평균 / 투자의견 평균)
+    ci = raw.get("consensusInfo") or {}
+    out["consensus_price_target"] = _parse_kr_number(ci.get("priceTargetMean"))
+    out["consensus_recomm"] = _parse_kr_number(ci.get("recommMean"))
+    # 업종/동종 (industryCode → 업종명 lookup, industryCompareInfo → peers)
+    out["industry_code"] = raw.get("industryCode")
+    out["industry_compare"] = [{
+        "name": x.get("stockName"),
+        "code": x.get("itemCode"),
+        "market_cap_raw": _parse_kr_number(x.get("marketValue")),
+    } for x in (raw.get("industryCompareInfo") or []) if isinstance(x, dict)]
     return out
 
 
@@ -436,9 +447,34 @@ def merge_basic(inte: dict, basic: dict) -> dict:
     return out
 
 
+def parse_industry_name(raw: dict) -> str | None:
+    """stocks/industry/{code} 응답의 groupInfo.name (업종명)."""
+    if not isinstance(raw, dict):
+        return None
+    g = raw.get("groupInfo") or {}
+    return g.get("name")
+
+
+def naver_industry_name(industry_code) -> str | None:
+    """업종코드 → 업종명. (예: 278 → '반도체와반도체장비')"""
+    if not industry_code:
+        return None
+    raw = _get_json(f"{_BASE_M}s/industry/{industry_code}?page=1&pageSize=1")
+    return parse_industry_name(raw) if raw else None
+
+
 def naver_basic_combined(code6: str) -> dict:
-    """integration + basic 네트워크 조합 → 0_basic dict. 절대 raise 안 함."""
-    return merge_basic(naver_integration(code6), naver_basic(code6))
+    """integration + basic 네트워크 조합 → 0_basic dict. 절대 raise 안 함.
+
+    업종코드가 있으면 업종명까지 lookup 해 industry 필드를 채운다(综合 fallback 방지).
+    """
+    out = merge_basic(naver_integration(code6), naver_basic(code6))
+    ic = out.get("industry_code")
+    if ic and not out.get("industry"):
+        nm = naver_industry_name(ic)
+        if nm:
+            out["industry"] = nm
+    return out
 
 
 def naver_trend(code6: str) -> list[dict]:
@@ -787,6 +823,49 @@ def to_events_dim(news: list, disclosures: list) -> dict:
         "disclosures_count": len(recent_notices),
         "catalyst": [],
         "warnings": [],
+    }
+
+
+def to_research_dim(research: dict, consensus_target: float | None = None,
+                    consensus_recomm: float | None = None) -> dict:
+    """parse_research(리포트 목록) + integration 컨센서스 → 6_research 차원.
+
+    목표주가는 컨센서스(integration.consensusInfo)가 더 정확하므로 우선,
+    없으면 parse_research 의 previewContent 텍스트 추출값(target_price_avg)을 유지.
+    """
+    out = dict(research or {})
+    if consensus_target:
+        out["target_price_avg"] = consensus_target
+    out["consensus_recomm"] = consensus_recomm
+    return out
+
+
+def to_peers_dim(industry_compare: list, self_code: str, self_name: str,
+                 self_mcap_raw: float | None = None, industry: str | None = None) -> dict:
+    """integration.industry_compare(동종) + 자기자신 → 4_peers 차원 스키마.
+
+    네이버 동종 비교는 PER/PBR 미제공 → 시가총액 기준 순위 위주(pe/pb=None).
+    """
+    peers: list[dict] = [{
+        "name": self_name, "code": self_code, "market_cap_raw": self_mcap_raw,
+        "is_self": True, "pe": None, "pb": None, "roe": None,
+    }]
+    for c in (industry_compare or []):
+        if not isinstance(c, dict) or c.get("code") == self_code:
+            continue
+        peers.append({
+            "name": c.get("name"), "code": c.get("code"),
+            "market_cap_raw": c.get("market_cap_raw"),
+            "is_self": False, "pe": None, "pb": None, "roe": None,
+        })
+    # NOTE: industryCompareInfo.marketValue 단위가 integration.market_cap(억원)과
+    # 일치하지 않아(스케일 불명) 시총 정렬/순위는 오정보 위험 → 네이버 원본 순서 유지,
+    # rank 미산출. PER/PBR 비교가 필요하면 각 peer integration 추가 호출(후속).
+    return {
+        "peer_table": peers,
+        "peer_count": len(peers),
+        "industry": industry,
+        "rank": None,
     }
 
 
