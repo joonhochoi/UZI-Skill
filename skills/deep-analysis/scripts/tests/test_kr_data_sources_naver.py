@@ -141,6 +141,25 @@ def test_parse_research_extracts_target_price_from_preview():
     assert _extract_target_price("특이사항 없음") is None
 
 
+def test_extract_rating():
+    from lib.kr_data_sources import _extract_rating
+    assert _extract_rating("투자의견 '매수' 및 목표주가를 55만원으로") == "매수"
+    assert _extract_rating("비중확대 의견 유지") == "매수"
+    assert _extract_rating("투자의견 중립으로 하향") == "중립"
+    assert _extract_rating("비중축소 권고") == "매도"
+    assert _extract_rating("Buy rating maintained") == "매수"
+    assert _extract_rating("특이사항 없음") is None
+
+
+def test_parse_research_rating_distribution():
+    from lib.kr_data_sources import parse_research
+    out = parse_research(_load("naver_research_005930.json"))
+    r0 = out["recent_reports"][0]
+    assert r0["rating"] == "매수"     # fixture previewContent "투자의견 '매수'"
+    assert out["rating_distribution"].get("매수", 0) >= 1
+    assert out["buy_count"] >= 1
+
+
 # ─── parse_trend → 12_capital_flow ──────────────────────────────────
 def test_parse_trend_maps_investors():
     from lib.kr_data_sources import parse_trend

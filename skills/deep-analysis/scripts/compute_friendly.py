@@ -57,7 +57,16 @@ def compute_scenarios(raw: dict, dimensions: dict) -> dict:
 
 
 def compute_exit_triggers(raw: dict, dimensions: dict, synthesis: dict) -> list[str]:
-    """自动从已有数据生成 5 条离场触发条件。"""
+    """自动从已有数据生成 5 条离场触发条件。
+
+    D8 · ko 분기: 한국(K) 종목(UZI_LANG=ko)이면 한국어 트리거 생성(동적 가격/숫자 포함).
+    기존 중국어 경로는 그대로 보존.
+    """
+    try:
+        from lib.i18n import get_language
+        ko = (get_language() == "ko")
+    except Exception:
+        ko = False
     triggers = []
     basic = (raw.get("dimensions", {}).get("0_basic") or {}).get("data") or {}
     kline = (raw.get("dimensions", {}).get("2_kline") or {}).get("data") or {}
@@ -70,36 +79,50 @@ def compute_exit_triggers(raw: dict, dimensions: dict, synthesis: dict) -> list[
     ma60 = (kline.get("ma60_60d") or [])
     ma60_last = next((v for v in reversed(ma60) if v), None)
     if ma60_last:
-        triggers.append(f"股价跌破 ¥{ma60_last:.2f}（60 日均线支撑位）→ 无条件止损")
+        triggers.append(
+            f"주가 ₩{ma60_last:,.0f} 하향 이탈 (60일 이동평균 지지선) → 무조건 손절" if ko
+            else f"股价跌破 ¥{ma60_last:.2f}（60 日均线支撑位）→ 无条件止损")
     else:
         price = basic.get("price") or 0
-        triggers.append(f"股价跌破 ¥{price * 0.88:.2f}（当前价 -12%）→ 无条件止损")
+        triggers.append(
+            f"주가 ₩{price * 0.88:,.0f} 하향 이탈 (현재가 -12%) → 무조건 손절" if ko
+            else f"股价跌破 ¥{price * 0.88:.2f}（当前价 -12%）→ 无条件止损")
 
     # 2. 基本面恶化 — 大客户
     downstream = chain.get("downstream", "")
     if downstream and downstream != "—":
         main_client = downstream.split("/")[0].strip()
-        triggers.append(f"{main_client} 季度指引下修 > 10% → 产业链逻辑动摇")
+        triggers.append(
+            f"{main_client} 분기 가이던스 10%+ 하향 → 공급망 논리 약화" if ko
+            else f"{main_client} 季度指引下修 > 10% → 产业链逻辑动摇")
     else:
-        triggers.append("下季度营收同比转负 → 基本面反转信号")
+        triggers.append(
+            "다음 분기 매출 전년 대비 감소 전환 → 펀더멘털 반전 신호" if ko
+            else "下季度营收同比转负 → 基本面反转信号")
 
     # 3. 业绩不达
     growth_str = research.get("upside", "+15%")
     g = _parse_pct(growth_str)
     if g > 0:
         min_growth = max(10, int(g - 15))
-        triggers.append(f"下次业绩预告低于 +{min_growth}% → 预期管理失守")
+        triggers.append(
+            f"다음 실적 가이던스 +{min_growth}% 미만 → 기대 관리 실패" if ko
+            else f"下次业绩预告低于 +{min_growth}% → 预期管理失守")
     else:
-        triggers.append("连续两期业绩不及券商预期中位数 → 逻辑失效")
+        triggers.append(
+            "2개 분기 연속 증권사 컨센서스 중간값 미달 → 논리 약화" if ko
+            else "连续两期业绩不及券商预期中位数 → 逻辑失效")
 
-    # 4. 游资撤离
+    # 4. 游资撤离 (K는 16_lhb skip → matched 비어 거의 생성 안 됨)
     matched = lhb.get("matched_youzi", "")
     if isinstance(matched, list):
         matched_str = " / ".join(matched[:2])
     else:
-        matched_str = str(matched).split("/")[0] if matched else "顶级游资"
+        matched_str = str(matched).split("/")[0] if matched else ("최상위 세력" if ko else "顶级游资")
     if matched_str and matched_str not in ("", "—"):
-        triggers.append(f"{matched_str} 席位大额卖出 > 2 亿 → 顶级资金撤离信号")
+        triggers.append(
+            f"{matched_str} 대량 매도 > 2억 → 최상위 자금 이탈 신호" if ko
+            else f"{matched_str} 席位大额卖出 > 2 亿 → 顶级资金撤离信号")
 
     # 5. 估值泡沫
     pe_quant = val.get("pe_quantile", "")
@@ -108,9 +131,14 @@ def compute_exit_triggers(raw: dict, dimensions: dict, synthesis: dict) -> list[
     if m:
         cur_q = int(m.group(1))
         target = min(95, cur_q + 15)
-        triggers.append(f"PE 站上 5 年 {target} 分位（≈ {val.get('pe', '—')} × {1 + (target - cur_q) / 100:.2f}）→ 泡沫区获利了结")
+        ratio = 1 + (target - cur_q) / 100
+        triggers.append(
+            f"PER 5년 {target} 분위 돌파 (≈ {val.get('pe', '—')} × {ratio:.2f}) → 거품 구간 차익 실현" if ko
+            else f"PE 站上 5 年 {target} 分位（≈ {val.get('pe', '—')} × {ratio:.2f}）→ 泡沫区获利了结")
     else:
-        triggers.append("PE 站上 5 年 90 分位 → 泡沫区获利了结")
+        triggers.append(
+            "PER 5년 90 분위 돌파 → 거품 구간 차익 실현" if ko
+            else "PE 站上 5 年 90 分位 → 泡沫区获利了结")
 
     return triggers[:5]
 

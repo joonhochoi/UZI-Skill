@@ -130,6 +130,24 @@ def _extract_target_price(text: str | None) -> float | None:
     return None
 
 
+def _extract_rating(text: str | None) -> str | None:
+    """리포트 미리보기 텍스트에서 투자의견 추출 → '매수'/'중립'/'매도' (없으면 None).
+
+    naver research API 는 rating 구조화 필드가 없어 previewContent 에서 키워드 매칭.
+    매도 → 중립 → 매수 순으로 검사(상위 키워드가 하위를 포함하지 않게).
+    """
+    if not text:
+        return None
+    t = str(text)
+    if any(k in t for k in ("매도", "비중축소", "Sell", "Underweight", "축소")):
+        return "매도"
+    if any(k in t for k in ("중립", "보유", "Hold", "Neutral", "시장수익률", "Market")):
+        return "중립"
+    if any(k in t for k in ("매수", "비중확대", "Buy", "Overweight", "적극", "확대")):
+        return "매수"
+    return None
+
+
 def _norm_deal_trend_row(r: dict) -> dict:
     """integration.dealTrendInfos / trend 의 한 행을 정규화 (외국인/기관/개인 순매수)."""
     return {
@@ -219,11 +237,13 @@ def parse_research(raw: list) -> dict:
         broker = r.get("brokerName")
         if broker:
             brokers.add(broker)
+        prev = r.get("previewContent")
         reports.append({
             "date": r.get("writeDate"),
             "title": r.get("title"),
             "broker": broker,
-            "target_price": _extract_target_price(r.get("previewContent")),
+            "rating": _extract_rating(prev),
+            "target_price": _extract_target_price(prev),
             "read_count": _parse_kr_number(r.get("readCount")),
         })
     out["report_count"] = len(reports)
@@ -231,6 +251,12 @@ def parse_research(raw: list) -> dict:
     out["recent_reports"] = reports
     tps = [x["target_price"] for x in reports if x["target_price"]]
     out["target_price_avg"] = round(sum(tps) / len(tps), 1) if tps else None
+    # 투자의견 분포 집계 (매수/중립/매도)
+    from collections import Counter as _Counter
+    ratings = [x["rating"] for x in reports if x["rating"]]
+    out["rating_distribution"] = dict(_Counter(ratings))
+    out["buy_count"] = out["rating_distribution"].get("매수", 0)
+    out["rated_count"] = len(ratings)
     return out
 
 
