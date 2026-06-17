@@ -341,6 +341,30 @@ def _viz_peers(raw: dict) -> str:
 
 def _viz_research(raw: dict) -> str:
     """Donut for rating distribution + target price"""
+    # K · rating_distribution(dict, {매수:N,중립:M,매도:K}) + 한국어 목표가 tail
+    rd = raw.get("rating_distribution")
+    if isinstance(rd, dict) and rd and any(k in rd for k in ("매수", "중립", "매도")):
+        buy_n = rd.get("매수", 0)
+        neu_n = rd.get("중립", 0)
+        sell_n = rd.get("매도", 0)
+        total = buy_n + neu_n + sell_n
+        out = ""
+        if total:
+            out += svg_donut([
+                ("매수", buy_n, COLOR_BULL),
+                ("중립", neu_n, COLOR_MUTED),
+                ("매도", sell_n, COLOR_BEAR),
+            ], label=f"{total}건")
+        target_avg = raw.get("target_avg", "—")
+        out += (
+            '<div style="display:flex;justify-content:space-between;margin-top:10px;'
+            'padding:8px;background:#fef3c7;border-radius:6px">'
+            '<span style="font-family:Fira Code;font-size:10px;color:#64748b">컨센서스 목표가</span>'
+            f'<span style="font-family:Fira Code;font-size:12px;color:#d97706;font-weight:700">{target_avg}</span>'
+            '</div>'
+        )
+        return out
+
     rating = str(raw.get("rating", ""))
     # parse "买入 18 / 增持 6 / 中性 2"
     import re
