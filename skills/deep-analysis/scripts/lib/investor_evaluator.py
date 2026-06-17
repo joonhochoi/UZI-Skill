@@ -22,7 +22,7 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from lib.investor_criteria import INVESTOR_RULES, Rule, get_ko_msgs
+from lib.investor_criteria import INVESTOR_RULES, Rule, get_ko_msgs, get_ko_name
 from lib.investor_knowledge import reality_check
 from lib.investor_profile import get_profile as _get_profile
 from lib.investor_db import INVESTORS as _INVESTORS
@@ -190,11 +190,13 @@ def evaluate(investor_id: str, features: dict) -> dict:
             if _lang == "ko":
                 pass_ko, _ = get_ko_msgs(investor_id, rule.rule_id)
                 _pass_template = pass_ko or rule.pass_msg or rule.name
+                _rule_name = get_ko_name(investor_id, rule.rule_id) or rule.name
             else:
                 _pass_template = rule.pass_msg or rule.name
+                _rule_name = rule.name
             pass_list.append({
                 "rule_id": rule.rule_id,
-                "name": rule.name,
+                "name": _rule_name,
                 "weight": rule.weight,
                 "msg": _fmt_msg(_pass_template, features),
             })
@@ -202,11 +204,13 @@ def evaluate(investor_id: str, features: dict) -> dict:
             if _lang == "ko":
                 _, fail_ko = get_ko_msgs(investor_id, rule.rule_id)
                 _fail_template = fail_ko or rule.fail_msg or f"미달: {rule.name}"
+                _rule_name = get_ko_name(investor_id, rule.rule_id) or rule.name
             else:
                 _fail_template = rule.fail_msg or f"未达{rule.name}"
+                _rule_name = rule.name
             fail_list.append({
                 "rule_id": rule.rule_id,
-                "name": rule.name,
+                "name": _rule_name,
                 "weight": rule.weight,
                 "msg": _fmt_msg(_fail_template, features),
             })

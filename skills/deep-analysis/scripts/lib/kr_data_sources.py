@@ -261,6 +261,10 @@ def parse_research(raw: list) -> dict:
         out["buy_rating_pct"] = f"{round(out['buy_count'] / len(ratings) * 100)}% ({out['buy_count']}/{len(ratings)})"
     if tps:
         out["target_avg"] = f"₩{round(sum(tps) / len(tps)):,}"
+    # 렌더러 KPI 키 별칭 — legacy assemble_report 는 coverage/rating/target_avg/upside,
+    # pipeline renderer 는 coverage_count/buy_rating_pct/target_price_avg 를 읽으므로 둘 다 채움.
+    out["coverage"] = f"{out['coverage_count']}개" if out.get("coverage_count") else None
+    out["rating"] = out.get("buy_rating_pct")
     return out
 
 
