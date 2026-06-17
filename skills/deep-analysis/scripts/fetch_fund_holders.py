@@ -233,9 +233,12 @@ def main(ticker: str, limit: int | None = None) -> dict:
     """
     ti = parse_ticker(ticker)
     if ti.market != "A":
+        _note = ("한국 공모펀드 보유 현황은 무료 API 미제공(에프앤가이드/제로인 등 유료) · "
+                 "DART 대량보유(majorstock 5%+)는 11_governance 후보 · graceful skip"
+                 if ti.market == "K" else "currently A-share only")
         return {
             "ticker": ti.full,
-            "data": {"fund_managers": [], "_note": "currently A-share only"},
+            "data": {"fund_managers": [], "_note": _note},
             "source": "n/a",
             "fallback": True,
         }

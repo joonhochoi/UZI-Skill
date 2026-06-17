@@ -387,11 +387,18 @@ medium/deep 점검에서 드러난 "리포트 본문 중국어"(평가위원 대
 3. ✅ **6_research** — `consensusInfo.priceTargetMean/recommMean` → `to_research_dim`(목표가 컨센서스 우선) + `fetch_research` K 분기.
 4. ✅ **registry** — `data_source_registry.py` 에 K 소스 9개 등록 + `markets` 주석 "K".
 
-**남은 것 (후속)**:
-- 문서: `AGENTS_KR.md`/`CLAUDE_KR.md`/`README_KR.md`/`SKILL.md` 에 K 사용법(`python run.py 005930` / `삼성전자`)·소스 갱신.
-- `7_industry`/`3_macro`/`13_policy` 등 정성 차원의 한국어 웹검색 쿼리 정밀화(현재 industry 채워져 fallback 개선됨).
-- 6_fund_holders K(DART 펀드보유), peer PER/PBR 보강, industryCompareInfo marketValue 단위 확정.
-- 평가위원 코멘트 잔여 혼용(personas/criteria) CJK=0 재검수(회고 참고).
+**추가 처리 완료 (2026-06-17 · 커밋 후속)**:
+- ✅ **문서**: `AGENTS_KR.md`/`README_KR.md`/`CLAUDE_KR.md` 에 K 사용법 섹션 추가(SKILL.md 는 중국어 원본이라 보존).
+- ✅ **평가위원 이름 한글화**: `locale_ko` 가 `investor_db.INVESTORS` 의 중국어명→영문명을 자동 매핑(en 보유 ~42명) + 음차 보강(바핏 등). agent_analysis 표기 잔존(伯利/查诺斯)도 음차 추가. → 활성 평가위원 한자명 0.
+- ✅ **4_peers PER/PBR 보강**: `fetch_peers` K 가 동종(industryCompareInfo)별 `naver_integration` 추가 호출로 PER/PBR 채움(삼성 28.0·SK하이닉스 24.4 등) + 동종 **중간값** PER(소부장 고PER 이상치 robust).
+- ✅ **6_fund_holders K**: graceful skip 확정(한국 공모펀드 보유는 무료 API 미제공 · 유료 에프앤가이드/제로인) + `_note` 한국 안내. DART 대량보유(majorstock 5%+)는 11_governance 보강 후보로 기록.
+
+**계속할 것 (남은 후속)**:
+- **게이지(F조) 24명 한국어 음차** — en 미보유라 자동 매핑 불가. K 에서 자동 skip 되어 노출 적으나 음차 사전 추가 필요.
+- **agent_analysis / personas / criteria CJK=0 재검수** — LLM 번역 잔여 혼용 근본 제거(회고 교훈: 번역 위임 시 CJK=0 검증·재시도 강제).
+- **6_fund_holders 유료 소스 연동**(에프앤가이드 등) 또는 DART 대량보유→11_governance 매핑.
+- **industryCompareInfo.marketValue 단위 확정** → peer 시총 순위/rank 산출 복원.
+- **정성 차원(`7_industry`/`3_macro`/`13_policy`) 한국어 웹검색 쿼리 정밀화**(industry 채워져 일부 개선됨).
 
 ---
 

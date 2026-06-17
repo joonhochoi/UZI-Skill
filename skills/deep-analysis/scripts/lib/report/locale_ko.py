@@ -105,6 +105,9 @@ _ZH_TO_KO: dict[str, str] = {
     "预计": "예상",
     "已确认": "확인됨",
     "待定": "미정",
+    # ─ 평가위원 한자명 (agent_analysis 가 db 와 다른 표기를 쓴 경우 보강) ─
+    "伯利": "마이클 버리",
+    "查诺斯": "짐 차노스",
     # ─ 중국 플랫폼명 (한국 종목 리포트에 노출 시) ─
     "雪球": "설구(중국)",
     "股吧": "주식게시판",
@@ -1313,3 +1316,17 @@ def localize_ko(html: str) -> str:
     html = _localize_labels(html)
     html = _strip_unrendered(html)
     return html
+
+
+# ─── 평가위원 이름 자동 매핑 (investor_db 중국어명 → 영문명) ──────────
+# en 이 있는 글로벌 평가위원(약 42명)의 한자명을 영문으로 치환해 한자 잔존을 제거한다.
+# en 이 없는 24명은 중국 게이지(F조)로, K 종목에서 reality_check 가 자동 skip 하므로
+# 카드 노출이 적음 → 한국어 음차는 후속 과제(new_dev_plan 기록).
+try:
+    from lib.investor_db import INVESTORS as _INVESTORS
+    for _inv in _INVESTORS:
+        _zh, _en = _inv.get("name"), _inv.get("en")
+        if _zh and _en:
+            _ZH_TO_KO.setdefault(_zh, _en)
+except Exception:
+    pass

@@ -54,9 +54,29 @@ def main(ticker: str) -> dict:
                 self_mcap_raw=basic.get("market_cap_yi"),
                 industry=industry or basic.get("industry"),
             )
+            # PER/PBR 보강 — 자기자신은 basic, 동종은 peer 별 integration 추가 호출
+            peer_pes: list = []
+            for p in dim.get("peer_table", []):
+                if p.get("is_self"):
+                    p["pe"] = basic.get("pe_ttm")
+                    p["pb"] = basic.get("pb")
+                elif p.get("code"):
+                    try:
+                        pi = naver_integration(p["code"])
+                        p["pe"] = pi.get("pe_ttm")
+                        p["pb"] = pi.get("pb")
+                        if pi.get("pe_ttm"):
+                            peer_pes.append(pi["pe_ttm"])
+                    except Exception:
+                        pass
+            # 동종 PER 대표값 (자사 제외) — 이상치(소부장 고PER) 왜곡 방지 위해 중간값
+            if peer_pes:
+                import statistics
+                dim["peer_median_pe"] = round(statistics.median(peer_pes), 2)
+                dim["peer_avg_pe"] = round(sum(peer_pes) / len(peer_pes), 2)
             return {
                 "ticker": ti.full, "data": dim,
-                "source": "naver:industryCompareInfo",
+                "source": "naver:industryCompareInfo + per",
                 "fallback": not bool(dim.get("peer_table")),
             }
         except Exception as e:
