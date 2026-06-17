@@ -51,3 +51,20 @@ v2.10.4부터 CLI 직접 실행 시 `agent_analysis.json`이 없으면 자동으
 - 데이터 소스 핵심: 네이버 증권 신페이지 비공식 JSON API (`m.stock.naver.com/api`, `api.stock.naver.com`, `ac.stock.naver.com`) + DART OpenAPI + KRX
 
 한국 종목 작업 시에는 위 두 문서를 먼저 읽으세요.
+
+### 한국 종목 사용법
+
+```bash
+python run.py 005930 --depth lite --no-browser     # 순수 6자리 = K 우선 (삼성전자)
+python run.py 삼성전자 --depth medium --no-browser  # 한글명 → 네이버 ac 자동완성 resolve
+python run.py 247540.KQ --no-browser               # 코스닥 명시
+python run.py 600519.A --no-browser                # A주(중국)는 .A 접미사 명시
+```
+
+- **시장 라우팅**: 접미사 없는 6자리 → **K(한국) 우선**. A주는 `.A`, 코스피 `.KS`, 코스닥 `.KQ`. (`run.py --market {A,H,U,K}` 강제 가능)
+- **출력 언어**: K 종목은 `UZI_LANG=ko` 자동. 평가위원 코멘트·라벨·통화(₩) 한국어. (D8: 중국어 출력부는 별도 ko 출력부로만 보존)
+- **DART**: `.env` 에 `DART_APIKEY`(opendart.fss.or.kr 40자리) 필요 — 지배구조/공시/정밀재무.
+- **K 미적용 차원**: `16_lhb`(용호방)·`19_contests`(설구) skip, F조(游资) 평가위원 자동 skip.
+- **테스트**: RTK 가 pytest 출력을 한글 mojibake로 오보하므로, K 테스트는 hermes venv pytest(`AppData/Local/hermes/hermes-agent/venv/Scripts/pytest.exe`) 직접 호출로 확인.
+
+> 진행 현황·발견·회고는 `new_dev_plan.md` 참조 (Phase 1~7 + medium/deep E2E 점검 + 한글화 회고).

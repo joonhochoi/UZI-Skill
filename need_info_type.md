@@ -1024,8 +1024,8 @@ DataSource(
 | `0_basic` | ✅ 거의 완전 | `integration` + `basic` | 실제 지배주주는 DART 필요 |
 | `1_financials` | ✅ 대부분 | `finance/annual` + `finance/quarter` | ROIC/듀퐁 일부는 파생 계산, DART 보강 |
 | `2_kline` | ✅ 완전 | `chart/domestic/item/{code}/day` | 지표는 pandas 자체 계산 |
-| `4_peers` | ⚠️ 부분 | (전용 API 미발견) | KRX 업종분류 + 종목별 `integration` 루프 |
-| `6_research` | ✅ 대부분 | `research/stock/{code}` + `integration.cnsPer/cnsEps` | 목표가는 텍스트 추출 |
+| `4_peers` | ✅ 부분 (Phase7) | `integration.industryCompareInfo`(동종 N) + `stocks/industry/{code}` | PER/PBR 비교는 peer별 `integration` 추가 호출 필요 |
+| `6_research` | ✅ 대부분 | `research/stock/{code}` + **`integration.consensusInfo`(priceTargetMean/recommMean)** | 목표가는 컨센서스 구조화 필드 우선(텍스트 추출 보조) |
 | `10_valuation` | ✅ 현재값 | `integration`(PER/PBR/배당/EPS/BPS) | 5년 분위는 `chart`로 PER 시계열 자체 계산 |
 | `11_governance` | ❌ | (신 API 없음) | **DART 필수** (최대주주/임원/담보) |
 | `12_capital_flow` | ✅ 한국 핵심 | `trend` + `integration.dealTrendInfos` | 신용잔고/보호예수는 KRX/DART |

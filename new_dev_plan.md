@@ -379,12 +379,19 @@ medium/deep 점검에서 드러난 "리포트 본문 중국어"(평가위원 대
 
 ---
 
-### Phase 7 · 업종 매핑 · peers · 마감 (★, 1일)
+### Phase 7 · 업종 매핑 · peers · 마감 (★) — 🟡 **대부분 완료 (2026-06-17, TDD, 커밋 `d649024`)**
 
-1. `lib/industry_mapping.py`: KRX 업종(WICS/FICS) → 내부 표준 업종 키 매핑 테이블. `7_industry`의 `INDUSTRY_ESTIMATES` 하드코딩을 한국 주요 업종(반도체/2차전지/바이오/인터넷/조선/방산 등)으로 확장.
-2. `fetch_peers` K: KRX 업종분류 API로 동종목 코드 수집 → 상위 N개 `naver_integration` 루프 → peer_table.
-3. `data_source_registry.py`: K DataSource 정식 등록(naver_integration/naver_chart/naver_research/dart/krx), `DataSource` 클래스 docstring의 `markets` 주석에 "K" 추가.
-4. 문서: `AGENTS.md`/`AGENTS_KR.md`/`SKILL.md`에 K 사용법, `README*` 갱신, `data-sources.md` 갱신.
+**완료**:
+1. ✅ **업종명** — `lib/industry_mapping.py`(KSIC 매핑 테이블) 대신, 네이버 `stocks/industry/{code}.groupInfo.name` 으로 직접 lookup(예 278→"반도체와반도체장비"). `parse_integration` 에 `industry_code`/`industry_compare`/`consensus_*` 추가, `naver_basic_combined` 가 업종명까지 채움 → `0_basic.industry` 정상화(综合 fallback 해소).
+2. ✅ **4_peers** — `to_peers_dim` + `fetch_peers` K 분기: `integration.industryCompareInfo`(동종) → peer_table. (단위 불명으로 시총 순위는 미산출 · PER/PBR 보강은 후속.)
+3. ✅ **6_research** — `consensusInfo.priceTargetMean/recommMean` → `to_research_dim`(목표가 컨센서스 우선) + `fetch_research` K 분기.
+4. ✅ **registry** — `data_source_registry.py` 에 K 소스 9개 등록 + `markets` 주석 "K".
+
+**남은 것 (후속)**:
+- 문서: `AGENTS_KR.md`/`CLAUDE_KR.md`/`README_KR.md`/`SKILL.md` 에 K 사용법(`python run.py 005930` / `삼성전자`)·소스 갱신.
+- `7_industry`/`3_macro`/`13_policy` 등 정성 차원의 한국어 웹검색 쿼리 정밀화(현재 industry 채워져 fallback 개선됨).
+- 6_fund_holders K(DART 펀드보유), peer PER/PBR 보강, industryCompareInfo marketValue 단위 확정.
+- 평가위원 코멘트 잔여 혼용(personas/criteria) CJK=0 재검수(회고 참고).
 
 ---
 
