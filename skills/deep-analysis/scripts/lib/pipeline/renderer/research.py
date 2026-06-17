@@ -12,7 +12,7 @@ class ResearchRenderer(SectionRenderer):
         d = ctx.data
         coverage = d.get("coverage") or d.get("coverage_count") or d.get("report_count") or 0
         buy_pct = d.get("buy_rating_pct") or "—"
-        tp_avg = d.get("target_price_avg") or d.get("target_avg") or "—"
+        tp_avg = d.get("target_avg") or d.get("target_price_avg") or "—"
         consensus_eps = d.get("consensus_eps_2026") or "—"
         brokers = d.get("brokers") or []
         recent = d.get("recent_reports") or []

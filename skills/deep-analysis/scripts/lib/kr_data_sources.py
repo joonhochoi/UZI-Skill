@@ -257,6 +257,10 @@ def parse_research(raw: list) -> dict:
     out["rating_distribution"] = dict(_Counter(ratings))
     out["buy_count"] = out["rating_distribution"].get("매수", 0)
     out["rated_count"] = len(ratings)
+    if ratings:
+        out["buy_rating_pct"] = f"{round(out['buy_count'] / len(ratings) * 100)}% ({out['buy_count']}/{len(ratings)})"
+    if tps:
+        out["target_avg"] = f"₩{round(sum(tps) / len(tps)):,}"
     return out
 
 
@@ -862,6 +866,7 @@ def to_research_dim(research: dict, consensus_target: float | None = None,
     out = dict(research or {})
     if consensus_target:
         out["target_price_avg"] = consensus_target
+        out["target_avg"] = f"₩{round(consensus_target):,}"   # 표시용(컨센서스 우선)
     out["consensus_recomm"] = consensus_recomm
     return out
 
