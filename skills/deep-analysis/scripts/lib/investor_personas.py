@@ -801,7 +801,7 @@ def get_comment(investor_id: str, signal: str, ctx: dict) -> str:
     line = random.choice(lines)
     # Format safely — missing keys fall back to '—'
     try:
-        return line.format(**{
+        out = line.format(**{
             "roe": ctx.get("roe", "—"),
             "pe": ctx.get("pe", "—"),
             "price": ctx.get("price", "—"),
@@ -811,7 +811,12 @@ def get_comment(investor_id: str, signal: str, ctx: dict) -> str:
             "stage": ctx.get("stage", "—"),
         })
     except (KeyError, IndexError):
-        return line
+        out = line
+    # ko 안전장치 · 게이지 대사의 원문 한자 괄호병기(예: '잠금 보유(锁仓)')를 제거해 CJK=0 보장
+    if lang == "ko":
+        import re as _re
+        out = _re.sub(r"\s*[（(][一-鿿·]+[）)]", "", out)
+    return out
 
 
 _GENERIC_FALLBACK = {

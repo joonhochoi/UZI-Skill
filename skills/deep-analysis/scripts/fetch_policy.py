@@ -60,12 +60,25 @@ def _fetch_cfachina_titles(limit: int = 15) -> list[dict]:
 
 def main(industry: str = "综合") -> dict:
     year = datetime.now().year
-    queries = {
-        "policy_dir": f"{year} {industry} 国家政策 扶持 利好",
-        "subsidy": f"{year} {industry} 政府补贴 税收优惠",
-        "monitoring": f"{year} {industry} 监管 合规 风险",
-        "anti_trust": f"{year} {industry} 反垄断 调查",
-    }
+    try:
+        from lib.i18n import get_language
+        ko = (get_language() == "ko")
+    except Exception:
+        ko = False
+    if ko:
+        queries = {
+            "policy_dir": f"{year} {industry} 한국 정부정책 지원 육성",
+            "subsidy": f"{year} {industry} 정부 보조금 세제 혜택 K칩스법",
+            "monitoring": f"{year} {industry} 규제 감독 컴플라이언스 리스크",
+            "anti_trust": f"{year} {industry} 공정거래위원회 조사 담합",
+        }
+    else:
+        queries = {
+            "policy_dir": f"{year} {industry} 国家政策 扶持 利好",
+            "subsidy": f"{year} {industry} 政府补贴 税收优惠",
+            "monitoring": f"{year} {industry} 监管 合规 风险",
+            "anti_trust": f"{year} {industry} 反垄断 调查",
+        }
     snippets: dict[str, list] = {}
     sentiment_map: dict[str, str] = {}
 

@@ -98,6 +98,28 @@ def test_parse_dart_disclosures():
 
 
 # ─── corpCode.xml 파싱 (종목코드 → corp_code) ───────────────────────
+def test_parse_dart_majorstock():
+    """대량보유(5%+) 보고 → 고유 보고자별 최신 지분율."""
+    from lib.kr_data_sources import parse_dart_majorstock
+    out = parse_dart_majorstock(_load("dart_majorstock_005930.json"))
+    assert len(out) >= 1
+    top = out[0]
+    assert top["name"] == "삼성물산"
+    assert top["ratio"] == 19.7      # fixture 최신 보고(2026-05-22) 기준
+    assert top.get("date")
+
+
+def test_to_governance_dim_includes_major_holders():
+    from lib.kr_data_sources import (parse_dart_shareholders, parse_dart_executives,
+                                     parse_dart_majorstock, to_governance_dim)
+    sh = parse_dart_shareholders(_load("dart_major_shareholders_005930.json"))
+    ex = parse_dart_executives(_load("dart_executives_005930.json"))
+    mh = parse_dart_majorstock(_load("dart_majorstock_005930.json"))
+    dim = to_governance_dim(sh, ex, major_holders=mh)
+    assert len(dim["major_holders"]) >= 1
+    assert dim["major_holders"][0]["name"] == "삼성물산"
+
+
 def test_parse_corp_code_xml_maps_listed_only():
     from lib.kr_data_sources import parse_corp_code_xml
     xml = (

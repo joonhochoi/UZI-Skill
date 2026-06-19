@@ -10,18 +10,35 @@ from lib.web_search import search, extract_snippets, quick_summary, search_trust
 
 def main(industry: str = "综合") -> dict:
     year = datetime.now().year
-    # v2.7.3 · 利率/政策/汇率用 3_macro 权威域（stats.gov.cn / pbc / safe / 中证网...）
-    # 行业宏观 + 大宗商品用普通 search（覆盖面更广）
-    trusted_queries = {
-        "rate_cycle": f"{year} 中国 利率 货币政策 降息 最新",
-        "us_rate": f"{year} 美联储 利率周期 最新",
-        "fx_trend": f"{year} 人民币 汇率 走势",
-    }
-    generic_queries = {
-        "geo_risk": f"{year} 中美关系 贸易 制裁 {industry}",
-        "commodity": f"{year} 大宗商品 周期 CRB指数",
-        "industry_macro": f"{year} {industry} 宏观 政策 利好 利空",
-    }
+    try:
+        from lib.i18n import get_language
+        ko = (get_language() == "ko")
+    except Exception:
+        ko = False
+    if ko:
+        # 한국 · 중국 권위도메인(stats.gov.cn/pbc) 회피 → 일반 search + 한국 거시 쿼리
+        trusted_queries: dict = {}
+        generic_queries = {
+            "rate_cycle": f"{year} 한국은행 기준금리 통화정책 동결 인하",
+            "us_rate": f"{year} 미국 연준 기준금리 전망",
+            "fx_trend": f"{year} 원달러 환율 전망 추이",
+            "geo_risk": f"{year} 한국 지정학 리스크 북한 미중 {industry}",
+            "commodity": f"{year} 원자재 가격 동향 반도체 소재",
+            "industry_macro": f"{year} {industry} 업황 전망 정책 호재 악재",
+        }
+    else:
+        # v2.7.3 · 利率/政策/汇率用 3_macro 权威域（stats.gov.cn / pbc / safe / 中证网...）
+        # 行业宏观 + 大宗商品用普通 search（覆盖面更广）
+        trusted_queries = {
+            "rate_cycle": f"{year} 中国 利率 货币政策 降息 最新",
+            "us_rate": f"{year} 美联储 利率周期 最新",
+            "fx_trend": f"{year} 人民币 汇率 走势",
+        }
+        generic_queries = {
+            "geo_risk": f"{year} 中美关系 贸易 制裁 {industry}",
+            "commodity": f"{year} 大宗商品 周期 CRB指数",
+            "industry_macro": f"{year} {industry} 宏观 政策 利好 利空",
+        }
 
     snippets: dict[str, list] = {}
     for key, q in trusted_queries.items():

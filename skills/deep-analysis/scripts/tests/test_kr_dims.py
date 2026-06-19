@@ -100,6 +100,9 @@ def test_to_peers_dim():
     # 동종 종목 포함
     assert any(p["name"] == "SK하이닉스" for p in pt)
     assert dim["industry"] == "반도체와반도체장비"
+    # 시총 단위 통일(백만원→억원) 후 순위 산출 — 삼성전자가 반도체 업종 시총 1위
+    assert selfrow[0]["market_cap_yi"] == 20052736.0
+    assert dim["rank"].startswith("1위")
 
 
 # ─── 6_research consensus (Phase 7) ─────────────────────────────────

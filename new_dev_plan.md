@@ -393,12 +393,18 @@ medium/deep 점검에서 드러난 "리포트 본문 중국어"(평가위원 대
 - ✅ **4_peers PER/PBR 보강**: `fetch_peers` K 가 동종(industryCompareInfo)별 `naver_integration` 추가 호출로 PER/PBR 채움(삼성 28.0·SK하이닉스 24.4 등) + 동종 **중간값** PER(소부장 고PER 이상치 robust).
 - ✅ **6_fund_holders K**: graceful skip 확정(한국 공모펀드 보유는 무료 API 미제공 · 유료 에프앤가이드/제로인) + `_note` 한국 안내. DART 대량보유(majorstock 5%+)는 11_governance 보강 후보로 기록.
 
-**계속할 것 (남은 후속)**:
-- **게이지(F조) 24명 한국어 음차** — en 미보유라 자동 매핑 불가. K 에서 자동 skip 되어 노출 적으나 음차 사전 추가 필요.
-- **agent_analysis / personas / criteria CJK=0 재검수** — LLM 번역 잔여 혼용 근본 제거(회고 교훈: 번역 위임 시 CJK=0 검증·재시도 강제).
-- **6_fund_holders 유료 소스 연동**(에프앤가이드 등) 또는 DART 대량보유→11_governance 매핑.
-- **industryCompareInfo.marketValue 단위 확정** → peer 시총 순위/rank 산출 복원.
-- **정성 차원(`7_industry`/`3_macro`/`13_policy`) 한국어 웹검색 쿼리 정밀화**(industry 채워져 일부 개선됨).
+**2차 후속 처리 완료 (2026-06-20)**:
+- ✅ **peer 시총 순위 복원** — `industryCompareInfo.marketValue` 단위 = **백만원**(= market_cap_yi 억원 × 100) 확정. `to_peers_dim` 이 /100 으로 억원 통일 후 정렬 → 삼성전자 반도체 시총 1위/7개 산출.
+- ✅ **게이지(F조) 24명 한국어 음차** — `locale_ko` 에 별명 음차 매핑 추가(주식바다 해적왕/장맹주/자오라오거 등), 값 CJK=0.
+- ✅ **CJK=0 재검수** — KO_MSGS/NAME_KO 한자 잔존 0 확인. PERSONAS_KO 게이지 14명의 원문 한자 괄호병기('잠금 보유(锁仓)')는 `get_comment` ko 경로에서 정규식 제거 → CJK=0.
+- ✅ **DART 대량보유(majorstock 5%+) → 11_governance** — `parse_dart_majorstock`/`dart_major_holders` + `to_governance_dim(major_holders=...)`. 삼성물산 19.7%(최신 보고) 표시.
+- ✅ **정성 쿼리 — macro/policy** — `fetch_macro`/`fetch_policy` 에 K 분기: 한국은행 기준금리·원달러 환율·K칩스법 등 한국 거시/정책 쿼리(중국 권위도메인 회피).
+
+**계속할 것 (추후)**:
+- **정성 쿼리 — industry/moat/trap** — `fetch_industry`("行业景气度"), `fetch_moat`("市场份额 龙头"), `fetch_trap_signals`(8신호 쿼리·권고 텍스트)의 중국어 쿼리/문구도 K 분기 필요(각 fetcher 구조 상이).
+- **6_fund_holders 공모펀드 보유** — 무료 API 부재. 에프앤가이드/제로인 유료 연동 시 fund_managers 스키마 충족 가능(현재 graceful skip + DART 대량보유로 일부 보완).
+- **agent_analysis 런타임 CJK 가드** — deep role-play 산출물(agent가 쓴 표기)에 한자 혼용 가능 → 렌더 전 CJK 가드 또는 작업 정의에 CJK=0 명시.
+- **fetch_trap_signals 권고 텍스트 ko** — "发现 N 个推广信号…杀猪盘" 등 생성 문구.
 
 ---
 

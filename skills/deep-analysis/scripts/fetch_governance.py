@@ -12,14 +12,16 @@ def main(ticker: str) -> dict:
         # K · DART 최대주주 + 임원 → 11_governance
         try:
             from lib.kr_data_sources import (dart_corp_code, dart_major_shareholders,
-                                             dart_executives, to_governance_dim)
+                                             dart_executives, dart_major_holders,
+                                             to_governance_dim)
             cc = dart_corp_code(ti.code)
-            sh, ex = [], []
+            sh, ex, mh = [], [], []
             if cc:
                 # 직전 사업연도 기준 (2024 사업보고서 11011)
                 sh = dart_major_shareholders(cc, 2024)
                 ex = dart_executives(cc, 2024)
-            data = to_governance_dim(sh, ex)
+                mh = dart_major_holders(cc)
+            data = to_governance_dim(sh, ex, major_holders=mh)
             return {
                 "ticker": ti.full, "data": data,
                 "source": "dart:hyslrSttus + exctvSttus",

@@ -674,6 +674,29 @@ def parse_dart_disclosures(raw: dict) -> list[dict]:
     return out
 
 
+def parse_dart_majorstock(raw: dict) -> list[dict]:
+    """majorstock(대량보유 5%+ 보고) → 고유 보고자별 최신 지분 [{name, ratio, date, ...}]."""
+    if not isinstance(raw, dict):
+        return []
+    latest: dict[str, dict] = {}
+    for r in raw.get("list", []):
+        if not isinstance(r, dict):
+            continue
+        nm = r.get("repror")
+        dt = str(r.get("rcept_dt") or "")
+        if not nm:
+            continue
+        if nm not in latest or dt > latest[nm].get("date", ""):
+            latest[nm] = {
+                "name": nm,
+                "ratio": _parse_kr_number(r.get("stkrt")),
+                "date": dt,
+                "report_type": r.get("report_tp"),
+                "reason": r.get("report_resn"),
+            }
+    return sorted(latest.values(), key=lambda x: x.get("ratio") or 0, reverse=True)
+
+
 def parse_corp_code_xml(xml_text: str) -> dict[str, str]:
     """corpCode.xml → {stock_code: corp_code} (상장사만 · 빈 stock_code 제외)."""
     import xml.etree.ElementTree as ET
@@ -760,6 +783,12 @@ def dart_executives(corp_code: str, year: str | int, reprt_code: str = "11011") 
         "corp_code": corp_code, "bsns_year": str(year), "reprt_code": reprt_code,
     })
     return parse_dart_executives(raw) if raw else []
+
+
+def dart_major_holders(corp_code: str) -> list[dict]:
+    """대량보유 상황보고(majorstock 5%+) → 고유 보고자별 최신 지분."""
+    raw = _dart_get("majorstock.json", {"corp_code": corp_code})
+    return parse_dart_majorstock(raw) if raw else []
 
 
 def dart_disclosures(corp_code: str, bgn_de: str | None = None, count: int = 30) -> list[dict]:
@@ -881,36 +910,40 @@ def to_peers_dim(industry_compare: list, self_code: str, self_name: str,
 
     네이버 동종 비교는 PER/PBR 미제공 → 시가총액 기준 순위 위주(pe/pb=None).
     """
+    # self_mcap_raw 는 억원(market_cap_yi). industryCompareInfo.marketValue 는 백만원
+    # (= 억원 × 100) → /100 으로 억원 통일 후 시총 정렬/순위 산출.
     peers: list[dict] = [{
-        "name": self_name, "code": self_code, "market_cap_raw": self_mcap_raw,
+        "name": self_name, "code": self_code, "market_cap_yi": self_mcap_raw,
         "is_self": True, "pe": None, "pb": None, "roe": None,
     }]
     for c in (industry_compare or []):
         if not isinstance(c, dict) or c.get("code") == self_code:
             continue
+        mv = c.get("market_cap_raw")
         peers.append({
             "name": c.get("name"), "code": c.get("code"),
-            "market_cap_raw": c.get("market_cap_raw"),
+            "market_cap_yi": round(mv / 100, 1) if mv else None,  # 백만원 → 억원
             "is_self": False, "pe": None, "pb": None, "roe": None,
         })
-    # NOTE: industryCompareInfo.marketValue 단위가 integration.market_cap(억원)과
-    # 일치하지 않아(스케일 불명) 시총 정렬/순위는 오정보 위험 → 네이버 원본 순서 유지,
-    # rank 미산출. PER/PBR 비교가 필요하면 각 peer integration 추가 호출(후속).
+    peers.sort(key=lambda p: p.get("market_cap_yi") or 0, reverse=True)
+    rank = next((i + 1 for i, p in enumerate(peers) if p.get("is_self")), None)
     return {
         "peer_table": peers,
         "peer_count": len(peers),
         "industry": industry,
-        "rank": None,
+        "rank": f"{rank}위/{len(peers)}개" if rank else None,
     }
 
 
-def to_governance_dim(shareholders: list, executives: list) -> dict:
-    """dart 최대주주 + 임원 → 11_governance 차원 스키마.
+def to_governance_dim(shareholders: list, executives: list, major_holders: list | None = None) -> dict:
+    """dart 최대주주 + 임원 (+ 대량보유 5%+) → 11_governance 차원 스키마.
 
     한국엔 중국식 주식 질권(质押) 일일 공개 제도가 없으므로 pledge=[] (점수 로직 호환).
+    major_holders: DART majorstock(대량보유 5%+ 보고)에서 온 고유 보고자별 최신 지분.
     """
     shareholders = shareholders or []
     executives = executives or []
+    major_holders = major_holders or []
     controller = None
     top_ratio = None
     for s in shareholders:
@@ -927,6 +960,7 @@ def to_governance_dim(shareholders: list, executives: list) -> dict:
         "shareholders": shareholders[:10],
         "executives": executives[:15],
         "executives_count": len(executives),
+        "major_holders": major_holders[:10],   # DART 대량보유(5%+)
         "pledge": [],
         "insider_trades_1y": [],
         "qualitative_search": [],
