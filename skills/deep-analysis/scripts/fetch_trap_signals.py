@@ -52,8 +52,41 @@ SIGNALS = [
     },
 ]
 
+# 한국(K) 작전주 맥락 8신호 — 리딩방/유튜브/텔레그램/관리종목 등
+SIGNALS_KO = [
+    {"id": 1, "name": "저질 계정 대량 동시 추천",
+     "queries": ["{name} 강력추천 급등 확실", "{name} 내부정보 폭등"],
+     "positive_kws": ["강력추천", "급등", "내부정보", "확실수익", "대박"]},
+    {"id": 2, "name": "추천 멘트 정형화",
+     "queries": ["{name} 세력 매집완료 급등임박", "{name} 두배 목표가"],
+     "positive_kws": ["급등임박", "매집완료", "두배", "목표 두배"]},
+    {"id": 3, "name": "유료 리딩방/VIP 유인",
+     "queries": ["{name} 주식 리딩방 단톡방", "{name} 선생님 종목추천 VIP"],
+     "positive_kws": ["리딩방", "단톡방", "VIP", "유료방", "선생님"]},
+    {"id": 4, "name": "펀더멘털과 인기 괴리",
+     "queries": ["{name} 적자 추천 급등", "{name} 관리종목 추천 급등"],
+     "positive_kws": ["적자", "관리종목", "상장폐지", "거래정지 추천"]},
+    {"id": 5, "name": "비정상 주가 패턴",
+     "queries": ["{name} 이상급등 작전 주가조작"],
+     "positive_kws": ["이상급등", "작전", "주가조작", "수직상승"]},
+    {"id": 6, "name": "주식고수 인설 마케팅",
+     "queries": ["{name} 주식고수 따라하기 리딩", "{name} 실전 선생님 수익인증"],
+     "positive_kws": ["주식고수", "따라하기", "실전 리딩", "수익인증"]},
+    {"id": 7, "name": "크로스플랫폼 홍보",
+     "queries": ["유튜브 {name} 주식 추천", "텔레그램 {name} 주식 오픈채팅"],
+     "positive_kws": ["유튜브", "텔레그램", "오픈채팅", "카페 추천"]},
+    {"id": 8, "name": "허위 리포트/가짜뉴스",
+     "queries": ["{name} 허위 정보 루머", "{name} 해명 정정공시"],
+     "positive_kws": ["허위", "루머", "정정", "해명", "가짜"]},
+]
+
 
 def main(ticker_or_name: str) -> dict:
+    try:
+        from lib.i18n import get_language
+        ko = (get_language() == "ko")
+    except Exception:
+        ko = False
     # If ticker, resolve to name
     name = ticker_or_name
     if ticker_or_name.replace(".", "").replace("SZ", "").replace("SH", "").isdigit():
@@ -66,7 +99,7 @@ def main(ticker_or_name: str) -> dict:
 
     hit_signals = []
     all_snippets = {}
-    for sig in SIGNALS:
+    for sig in (SIGNALS_KO if ko else SIGNALS):
         combined_bodies = []
         for q_template in sig["queries"][:1]:  # 1 query per signal to save search calls
             q = q_template.format(name=name)
@@ -90,21 +123,24 @@ def main(ticker_or_name: str) -> dict:
 
     n_hits = len(hit_signals)
     if n_hits <= 1:
-        level = "🟢 安全"
+        level = "🟢 안전" if ko else "🟢 安全"
         score = 9
-        recommendation = "数据正常，未发现明显推广痕迹。"
+        recommendation = "데이터 정상 · 뚜렷한 작전/홍보 흔적 없음." if ko else "数据正常，未发现明显推广痕迹。"
     elif n_hits <= 3:
-        level = "🟡 注意"
+        level = "🟡 주의" if ko else "🟡 注意"
         score = 7
-        recommendation = f"发现 {n_hits} 个推广信号，建议核实信息源。"
+        recommendation = (f"홍보/작전 신호 {n_hits}개 발견 · 정보 출처 확인 권고."
+                          if ko else f"发现 {n_hits} 个推广信号，建议核实信息源。")
     elif n_hits <= 5:
-        level = "🟠 警惕"
+        level = "🟠 경계" if ko else "🟠 警惕"
         score = 4
-        recommendation = f"发现 {n_hits} 个推广信号，强烈建议谨慎。"
+        recommendation = (f"홍보/작전 신호 {n_hits}개 발견 · 신중 접근 강력 권고."
+                          if ko else f"发现 {n_hits} 个推广信号，强烈建议谨慎。")
     else:
-        level = "🔴 高度可疑"
+        level = "🔴 매우 의심" if ko else "🔴 高度可疑"
         score = 1
-        recommendation = f"发现 {n_hits} 个推广信号，强烈建议回避。疑似杀猪盘特征。"
+        recommendation = (f"홍보/작전 신호 {n_hits}개 발견 · 회피 강력 권고 · 작전주 의심."
+                          if ko else f"发现 {n_hits} 个推广信号，强烈建议回避。疑似杀猪盘特征。")
 
     return {
         "ticker": ticker_or_name,
@@ -116,7 +152,7 @@ def main(ticker_or_name: str) -> dict:
             "signals_hit_detail": hit_signals,
             "recommendation": recommendation,
             "evidence_count": sum(len(s.get("evidence_kws", [])) for s in hit_signals),
-            "high_risk_kw": ", ".join(s["name"] for s in hit_signals[:3]) if hit_signals else "未发现",
+            "high_risk_kw": ", ".join(s["name"] for s in hit_signals[:3]) if hit_signals else ("미발견" if ko else "未发现"),
             "snippets": all_snippets,
         },
         "source": "web_search:ddgs + 8-signal keyword scan",

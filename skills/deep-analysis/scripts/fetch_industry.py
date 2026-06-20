@@ -117,21 +117,43 @@ def _dynamic_industry_overview(industry: str) -> dict:
       - lifecycle 阶段性关键词
     把抽到的 snippets 返回给 agent，由 agent 在 dim_commentary 里综合。
     """
-    try:
-        from lib.web_search import search_trusted
-    except Exception:
-        return {}
-
     from datetime import datetime
     yr = datetime.now().year
-    queries = {
-        "景气度": f"{yr} {industry} 行业景气度 增速 市场规模",
-        "TAM":    f"{industry} 行业规模 亿元 TAM 2026",
-        "周期":   f"{industry} 生命周期 成长期 成熟期 下行",
-    }
+    try:
+        from lib.i18n import get_language
+        ko = (get_language() == "ko")
+    except Exception:
+        ko = False
+
+    if ko:
+        # 한국 · 중국 권위도메인 회피 → 일반 search + 한국어 업황 쿼리
+        try:
+            from lib.web_search import search as _isearch
+        except Exception:
+            return {}
+        queries = {
+            "景气度": f"{yr} {industry} 업황 전망 성장률 시장규모",
+            "TAM":    f"{industry} 시장규모 TAM {yr} 전망 조원",
+            "周期":   f"{industry} 산업 사이클 성장기 성숙기 둔화",
+        }
+        def _do_search(q):
+            return _isearch(q, max_results=4)
+    else:
+        try:
+            from lib.web_search import search_trusted
+        except Exception:
+            return {}
+        queries = {
+            "景气度": f"{yr} {industry} 行业景气度 增速 市场规模",
+            "TAM":    f"{industry} 行业规模 亿元 TAM 2026",
+            "周期":   f"{industry} 生命周期 成长期 成熟期 下行",
+        }
+        def _do_search(q):
+            return search_trusted(q, dim_key="7_industry", max_results=4)
+
     snippets: dict[str, list] = {}
     for tag, q in queries.items():
-        res = search_trusted(q, dim_key="7_industry", max_results=4)
+        res = _do_search(q)
         valid = [r for r in res if "error" not in r]
         snippets[tag] = [
             {"title": r.get("title", "")[:80], "body": r.get("body", "")[:200], "url": r.get("url", "")}

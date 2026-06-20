@@ -400,11 +400,14 @@ medium/deep 점검에서 드러난 "리포트 본문 중국어"(평가위원 대
 - ✅ **DART 대량보유(majorstock 5%+) → 11_governance** — `parse_dart_majorstock`/`dart_major_holders` + `to_governance_dim(major_holders=...)`. 삼성물산 19.7%(최신 보고) 표시.
 - ✅ **정성 쿼리 — macro/policy** — `fetch_macro`/`fetch_policy` 에 K 분기: 한국은행 기준금리·원달러 환율·K칩스법 등 한국 거시/정책 쿼리(중국 권위도메인 회피).
 
+**3차 후속 처리 완료 (2026-06-20)**:
+- ✅ **정성 쿼리 industry/moat/trap K 분기** — `fetch_industry._dynamic_industry_overview`(업황/시장규모/사이클 + 일반 search, 중국 권위도메인 회피), `fetch_moat`(특허/전환비용/네트워크/점유율/R&D 한국어 + `{name} 주식` 앵커), `fetch_trap_signals`(한국 작전주 맥락 `SIGNALS_KO` 8신호 — 리딩방/유튜브/텔레그램/관리종목 + level/권고문 ko). 모두 UZI_LANG=ko 분기, 비K 중국어 보존.
+
 **계속할 것 (추후)**:
-- **정성 쿼리 — industry/moat/trap** — `fetch_industry`("行业景气度"), `fetch_moat`("市场份额 龙头"), `fetch_trap_signals`(8신호 쿼리·권고 텍스트)의 중국어 쿼리/문구도 K 분기 필요(각 fetcher 구조 상이).
 - **6_fund_holders 공모펀드 보유** — 무료 API 부재. 에프앤가이드/제로인 유료 연동 시 fund_managers 스키마 충족 가능(현재 graceful skip + DART 대량보유로 일부 보완).
 - **agent_analysis 런타임 CJK 가드** — deep role-play 산출물(agent가 쓴 표기)에 한자 혼용 가능 → 렌더 전 CJK 가드 또는 작업 정의에 CJK=0 명시.
-- **fetch_trap_signals 권고 텍스트 ko** — "发现 N 个推广信号…杀猪盘" 등 생성 문구.
+- **trap/moat 휴리스틱 키워드 한국어 매칭** — `fetch_trap_signals.SIGNALS_KO.positive_kws`(완료) 외, `fetch_moat` 의 `pos_kws`("龙头/第一") 등 점수 휴리스틱은 아직 중국어 → K 결과 매칭 부정확(snippet 은 한국어 제공, agent 가 dim_commentary 작성).
+- **industry TAM/growth 휴리스틱** — `fetch_industry` 의 "亿元/XX亿" 추출 정규식이 중국 단위 기반 → 한국(조원/억원) 추출 보강 필요(쿼리·snippet 은 한국어).
 
 ---
 

@@ -78,16 +78,27 @@ def main(ticker: str) -> dict:
     name = basic.get("name", ti.code)
 
     # Search queries — use full name + stock context to avoid dictionary hits
-    # Add "股票" or "上市公司" to anchor the query in finance domain
     full_name = basic.get("full_name") or name
-    stock_anchor = f"{name} 上市公司"
-    queries = {
-        "intangible": f"{stock_anchor} 专利 核心技术 品牌壁垒 竞争优势",
-        "switching": f"{stock_anchor} 客户粘性 转换成本 认证壁垒 大客户",
-        "network": f"{stock_anchor} 平台效应 网络效应 用户生态",
-        "scale": f"{stock_anchor} 市场份额 行业地位 规模优势 龙头",
-        "rd": f"{stock_anchor} 研发投入 研发占比 技术实力",
-    }
+    ko = (ti.market == "K")
+    if ko:
+        stock_anchor = f"{name} 주식"
+        queries = {
+            "intangible": f"{stock_anchor} 특허 핵심기술 브랜드 경쟁우위",
+            "switching": f"{stock_anchor} 고객 락인 전환비용 인증 장벽 대형고객",
+            "network": f"{stock_anchor} 플랫폼 효과 네트워크 효과 생태계",
+            "scale": f"{stock_anchor} 시장점유율 업계 1위 규모 경쟁력",
+            "rd": f"{stock_anchor} 연구개발 R&D 투자 비중 기술력",
+        }
+    else:
+        # Add "上市公司" to anchor the query in finance domain
+        stock_anchor = f"{name} 上市公司"
+        queries = {
+            "intangible": f"{stock_anchor} 专利 核心技术 品牌壁垒 竞争优势",
+            "switching": f"{stock_anchor} 客户粘性 转换成本 认证壁垒 大客户",
+            "network": f"{stock_anchor} 平台效应 网络效应 用户生态",
+            "scale": f"{stock_anchor} 市场份额 行业地位 规模优势 龙头",
+            "rd": f"{stock_anchor} 研发投入 研发占比 技术实力",
+        }
 
     # v2.15.1 · 计算 superstar polluters（排除目标本身）· 防止 DDGS 对生僻公司返超级股票的结果
     superstar_set = {p for p in _SUPERSTAR_POLLUTERS if p not in (name or "") and p not in (full_name or "")}
