@@ -943,6 +943,11 @@ def generate_synthesis(raw: dict, dims_scored: dict, panel: dict, agent_analysis
       - agent_reviewed: True  (marks that agent has intervened)
     """
     from compute_friendly import compute_scenarios, compute_exit_triggers
+    try:
+        from lib.i18n import get_language
+        _ko = (get_language() == "ko")
+    except Exception:
+        _ko = False
     ag = agent_analysis or {}
 
     basic = (raw.get("dimensions", {}).get("0_basic") or {}).get("data") or {}
@@ -1099,13 +1104,13 @@ def generate_synthesis(raw: dict, dims_scored: dict, panel: dict, agent_analysis
         },
         {
             "round": 2,
-            "bull_say": agent_bull_rounds[1] if len(agent_bull_rounds) > 1 else (" · ".join(r.get("msg", r.get("name", "")) for r in bull_pass_rules[:3]) or "数据支持我的判断。"),
-            "bear_say": agent_bear_rounds[1] if len(agent_bear_rounds) > 1 else (" · ".join(r.get("msg", r.get("name", "")) for r in bear_fail_rules[:3]) or "风险点太多。"),
+            "bull_say": agent_bull_rounds[1] if len(agent_bull_rounds) > 1 else (" · ".join(r.get("msg", r.get("name", "")) for r in bull_pass_rules[:3]) or ("데이터가 내 판단을 뒷받침한다." if _ko else "数据支持我的判断。")),
+            "bear_say": agent_bear_rounds[1] if len(agent_bear_rounds) > 1 else (" · ".join(r.get("msg", r.get("name", "")) for r in bear_fail_rules[:3]) or ("리스크 요인이 너무 많다." if _ko else "风险点太多。")),
         },
         {
             "round": 3,
-            "bull_say": agent_bull_rounds[2] if len(agent_bull_rounds) > 2 else f"综合看，{bull.get('score', 0)} 分，我的立场不变。",
-            "bear_say": agent_bear_rounds[2] if len(agent_bear_rounds) > 2 else f"综合看，{bear.get('score', 0)} 分，风险大于收益。",
+            "bull_say": agent_bull_rounds[2] if len(agent_bull_rounds) > 2 else (f"종합하면 {bull.get('score', 0)}점 · 내 입장은 변함없다." if _ko else f"综合看，{bull.get('score', 0)} 分，我的立场不变。"),
+            "bear_say": agent_bear_rounds[2] if len(agent_bear_rounds) > 2 else (f"종합하면 {bear.get('score', 0)}점 · 리스크가 수익보다 크다." if _ko else f"综合看，{bear.get('score', 0)} 分，风险大于收益。"),
         },
     ]
 
@@ -1129,11 +1134,6 @@ def generate_synthesis(raw: dict, dims_scored: dict, panel: dict, agent_analysis
     rating = (init_cov.get("headline") or {}).get("rating", "")
 
     # Punchline: prefer agent override, fallback to script generation
-    try:
-        from lib.i18n import get_language
-        _ko = (get_language() == "ko")
-    except Exception:
-        _ko = False
     _cur = "₩" if _ko else "¥"
     agent_punchline = gd_override.get("punchline") or ""
     if agent_punchline:
@@ -1316,10 +1316,10 @@ def generate_synthesis(raw: dict, dims_scored: dict, panel: dict, agent_analysis
         },
         "risks": risks,
         "buy_zones": narrative_override.get("buy_zones") or {
-            "value": {"price": round(price * 0.85, 2) if price else "—", "rationale": "历史 PE 25 分位"},
-            "growth": {"price": round(price * 0.92, 2) if price else "—", "rationale": "PEG 合理区"},
-            "technical": {"price": round(price * 0.95, 2) if price else "—", "rationale": "MA60 支撑位"},
-            "youzi": {"price": price or "—", "rationale": "当前情绪未破"},
+            "value": {"price": round(price * 0.85, 2) if price else "—", "rationale": ("과거 PER 25분위" if _ko else "历史 PE 25 分位")},
+            "growth": {"price": round(price * 0.92, 2) if price else "—", "rationale": ("PEG 합리 구간" if _ko else "PEG 合理区")},
+            "technical": {"price": round(price * 0.95, 2) if price else "—", "rationale": ("60일선 지지" if _ko else "MA60 支撑位")},
+            "youzi": {"price": price or "—", "rationale": ("현재 심리 미붕괴" if _ko else "当前情绪未破")},
         },
         "friendly": {
             "scenarios": scenarios,

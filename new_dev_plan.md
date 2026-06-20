@@ -421,8 +421,15 @@ medium/deep 점검에서 드러난 "리포트 본문 중국어"(평가위원 대
 - ✅ **peer PER 이상치 정제** — `fetch_peers`+`stock_features` 0<pe≤150 필터(적자·극단 고PER 제외) → peer_avg_pe 276.73→**40.34** 정상화.
 - **성과(000660 deep 가시 한자)**: 258 → **113 (약 56% 제거)**.
 
+**6차 후속 처리 완료 (2026-06-20) — deep 토론/시나리오/verdict 잔여 한자 마감**:
+- ✅ **Bull-Bear 토론 ko 분기** — `generate_synthesis` rounds 2·3 fallback("데이터가 내 판단을 뒷받침" / "리스크 요인 과다" / "종합하면 N점 · 내 입장 변함없다" / "리스크가 수익보다 크다"). 함수 시작 `_ko` 공용화(punchline 중복 제거).
+- ✅ **시나리오 buy_zones rationale ko 분기** — 과거 PER 25분위 / PEG 합리 구간 / 60일선 지지 / 현재 심리 미붕괴.
+- ✅ **verdict/skip 라벨 locale 보강** — `强烈买入`→적극 매수, `不在能力圈范围内…`→능력 범위 밖 평가 보류.
+- ✅ **차원/섹션 라벨 단어 locale** — 请运行/建模/环境/资金/观点/投票 등(거시환경·주력자금·기관급 밸류에이션 모델링 등 부분 잔재).
+- **성과(000660 deep 가시 한자)**: 113 → **37 (deep 258 대비 86%↓, medium 82보다 적음)**. 남은 37은 단일 한자 조사/단위/인명(人/次/份/日/李/美 등)으로 매핑 시 오치환 위험 → 종착.
+- 참고: `COMMENT_TEMPLATES`/`GROUP_VERDICTS`(score_fns)는 dead code(평가위원 코멘트는 `investor_personas.get_comment`=PERSONAS_KO 경유)로 확인 → 손대지 않음.
+
 **계속할 것 (추후)**:
-- **평가위원 개별 코멘트/분석 프로파일 ko** — `score_fns` gauge 코멘트(我的立场不变/合理区 등) + `analysis_profile`(投票/环境/资金) 라벨. PERSONAS/criteria 코멘트 CJK=0 재검수의 연장(deep 잔여 한자 ~113의 주축).
 - **6_fund_holders 공모펀드 보유** — 무료 API 부재. 에프앤가이드/제로인 유료 연동 시 fund_managers 스키마 충족 가능(현재 graceful skip + DART 대량보유로 일부 보완).
 - **5_chain 밸류체인** — 同花顺(중국) 의존 → K 데이터 부재로 전부 null(graceful). 네이버 산업/사업보고서 기반 K 상하류 추정 보강 여지.
 - **agent_analysis 런타임 CJK 가드** — deep role-play 산출물(agent가 쓴 표기)에 한자 혼용 가능 → 렌더 전 CJK 가드 또는 작업 정의에 CJK=0 명시.
