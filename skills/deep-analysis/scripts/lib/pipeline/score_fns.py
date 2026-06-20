@@ -763,8 +763,15 @@ def _autofill_qualitative_via_mx(raw: dict, ticker: str) -> None:
     except ImportError:
         _ws_search = None
 
+    # K(한국)은 MX(중국 妙想 API) 비활성 → 中文 정책/기사 응답 노이즈 차단, ddgs(한국어) 사용
+    try:
+        from lib.i18n import get_language
+        _ko = (get_language() == "ko")
+    except Exception:
+        _ko = False
+
     client = MXClient() if MXClient else None
-    mx_ok = client is not None and client.available
+    mx_ok = client is not None and client.available and not _ko
     if not mx_ok and not _ws_search:
         print("   ⚠️ MX_APIKEY 未设置且 ddgs 不可用，跳过自动兜底")
         return
@@ -786,20 +793,37 @@ def _autofill_qualitative_via_mx(raw: dict, ticker: str) -> None:
         return False
 
     # 6 个定性维度的"空判定" + MX query 模板（v2.6.1 加严：默认值也算空）
-    targets = [
-        ("3_macro",     lambda d: all(_is_default_or_empty(d.get(k)) for k in ("rate_cycle","fx_trend","geo_risk","commodity")),
-                        lambda: f"{industry} 2026 宏观环境 利率周期 汇率 大宗商品 行业影响"),
-        ("7_industry",  lambda d: _is_default_or_empty(d.get("growth")) and not (d.get("cninfo_metrics") or {}).get("industry_pe_weighted"),
-                        lambda: f"{industry} 2026 行业增速 TAM 市场规模 渗透率"),
-        ("8_materials", lambda d: _is_default_or_empty(d.get("core_material")),
-                        lambda: f"{name} {code_raw} 主营业务 主要原材料 成本构成"),
-        ("9_futures",   lambda d: _is_default_or_empty(d.get("linked_contract")) or "无直接" in str(d.get("linked_contract","")),
-                        lambda: f"{industry} 行业 上下游 期货品种 套保 大宗"),
-        ("13_policy",   lambda d: not any((d.get("snippets") or {}).get(k) for k in ("policy_dir","subsidy","monitoring","anti_trust")),
-                        lambda: f"{industry} 2026 国家政策 监管动态 补贴 税收 影响"),
-        ("15_events",   lambda d: not d.get("event_timeline") and not d.get("recent_news") and not d.get("recent_notices"),
-                        lambda: f"{name} {code_raw} 最新公告 重大事件 业绩 合同"),
-    ]
+    # K(한국) autofill query 는 한국어로 (中文 쿼리 시 ddgs 가 중국 기사 반환 → 노이즈)
+    if _ko:
+        targets = [
+            ("3_macro",     lambda d: all(_is_default_or_empty(d.get(k)) for k in ("rate_cycle","fx_trend","geo_risk","commodity")),
+                            lambda: f"{industry} 2026 거시경제 금리 환율 원자재 산업 영향"),
+            ("7_industry",  lambda d: _is_default_or_empty(d.get("growth")) and not (d.get("cninfo_metrics") or {}).get("industry_pe_weighted"),
+                            lambda: f"{industry} 2026 산업 성장률 시장규모 TAM 침투율"),
+            ("8_materials", lambda d: _is_default_or_empty(d.get("core_material")),
+                            lambda: f"{name} 주요 원자재 원가 구조 핵심 소재"),
+            ("9_futures",   lambda d: _is_default_or_empty(d.get("linked_contract")) or "无直接" in str(d.get("linked_contract","")),
+                            lambda: f"{industry} 전후방 원자재 선물 헤지 상품"),
+            ("13_policy",   lambda d: not any((d.get("snippets") or {}).get(k) for k in ("policy_dir","subsidy","monitoring","anti_trust")),
+                            lambda: f"{industry} 2026 정부정책 규제 지원 보조금 영향"),
+            ("15_events",   lambda d: not d.get("event_timeline") and not d.get("recent_news") and not d.get("recent_notices"),
+                            lambda: f"{name} 최신 공시 주요 이벤트 실적 계약"),
+        ]
+    else:
+        targets = [
+            ("3_macro",     lambda d: all(_is_default_or_empty(d.get(k)) for k in ("rate_cycle","fx_trend","geo_risk","commodity")),
+                            lambda: f"{industry} 2026 宏观环境 利率周期 汇率 大宗商品 行业影响"),
+            ("7_industry",  lambda d: _is_default_or_empty(d.get("growth")) and not (d.get("cninfo_metrics") or {}).get("industry_pe_weighted"),
+                            lambda: f"{industry} 2026 行业增速 TAM 市场规模 渗透率"),
+            ("8_materials", lambda d: _is_default_or_empty(d.get("core_material")),
+                            lambda: f"{name} {code_raw} 主营业务 主要原材料 成本构成"),
+            ("9_futures",   lambda d: _is_default_or_empty(d.get("linked_contract")) or "无直接" in str(d.get("linked_contract","")),
+                            lambda: f"{industry} 行业 上下游 期货品种 套保 大宗"),
+            ("13_policy",   lambda d: not any((d.get("snippets") or {}).get(k) for k in ("policy_dir","subsidy","monitoring","anti_trust")),
+                            lambda: f"{industry} 2026 国家政策 监管动态 补贴 税收 影响"),
+            ("15_events",   lambda d: not d.get("event_timeline") and not d.get("recent_news") and not d.get("recent_notices"),
+                            lambda: f"{name} {code_raw} 最新公告 重大事件 业绩 合同"),
+        ]
     fixed_count = 0
     skipped_full = 0
     failed_count = 0

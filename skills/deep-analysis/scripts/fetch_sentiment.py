@@ -53,8 +53,12 @@ def main(ticker: str) -> dict:
             all_bodies.append(s.get("body", ""))
     text = " ".join(all_bodies).lower()
 
-    positive_kws = ["看好", "强势", "上涨", "涨停", "突破", "利好", "龙头", "加仓", "买入"]
-    negative_kws = ["看空", "下跌", "亏损", "利空", "减仓", "卖出", "割肉", "杀跌"]
+    if ti.market == "K":
+        positive_kws = ["호재", "강세", "상승", "상한가", "돌파", "매수", "급등", "기대", "호실적", "상향"]
+        negative_kws = ["악재", "하락", "손실", "약세", "매도", "급락", "손절", "하한가", "적자", "하향"]
+    else:
+        positive_kws = ["看好", "强势", "上涨", "涨停", "突破", "利好", "龙头", "加仓", "买入"]
+        negative_kws = ["看空", "下跌", "亏损", "利空", "减仓", "卖出", "割肉", "杀跌"]
     pos = sum(1 for kw in positive_kws if kw in text)
     neg = sum(1 for kw in negative_kws if kw in text)
     total = pos + neg if (pos + neg) > 0 else 1

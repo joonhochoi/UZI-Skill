@@ -172,53 +172,84 @@ def _dynamic_industry_overview(industry: str) -> dict:
     # 避免被 "失业率 5%" "PE 25%" 等不相关的 % 抢先
     # 关键词扩展到"涨超/涨幅/暴涨/翻倍/提升/上升/上涨"以覆盖中文财经新闻的常见表达
     growth_heuristic = "—"
-    growth_context_pat = re.compile(
-        r"(?:增长|增速|CAGR|复合增长|同比|增幅|年均增长|涨超|涨幅|暴涨|翻倍|提升|上升|上涨|净利齐涨)"
-        r"[^%]{0,20}?([+\-]?\d{1,3}(?:\.\d+)?)\s*%"
-    )
-    m = growth_context_pat.search(all_bodies)
-    if m:
-        growth_heuristic = f"{m.group(1)}%/年"
-    else:
-        # 次级兜底：含"行业"/"市场" 前后的 %
-        m2 = re.search(
-            r"(?:行业|市场|产业)[^%]{0,30}?([+\-]?\d{1,3}(?:\.\d+)?)\s*%|"
-            r"([+\-]?\d{1,3}(?:\.\d+)?)\s*%\s*(?:的?增长|的?增速)",
-            all_bodies,
+    if ko:
+        # 한국어 snippet: "성장률 X%" / "X% 성장" / "연평균 X%" / "CAGR X%"
+        gm = re.search(
+            r"(?:성장률|성장|증가율|증가|연평균|연평균\s*성장|CAGR|복합성장|급증|상승|증대)"
+            r"[^%]{0,20}?([+\-]?\d{1,3}(?:\.\d+)?)\s*%", all_bodies
+        ) or re.search(
+            r"([+\-]?\d{1,3}(?:\.\d+)?)\s*%\s*(?:성장|증가|상승)", all_bodies
         )
-        if m2:
-            val = m2.group(1) or m2.group(2)
-            growth_heuristic = f"{val}%/年"
-
-    # TAM：匹配"市场规模/规模达/将达" 附近的"XX亿"
-    tam_heuristic = "—"
-    tam_context_pat = re.compile(
-        r"(?:市场规模|规模达|规模约|将达|产业规模|TAM|行业规模)[^亿]{0,20}?(\d{1,5}(?:\.\d+)?)\s*亿"
-    )
-    m = tam_context_pat.search(all_bodies)
-    if m:
-        tam_heuristic = f"¥{m.group(1)}亿"
+        if gm:
+            growth_heuristic = f"{gm.group(1)}%/년"
     else:
-        m2 = re.search(r"(\d{1,5}(?:\.\d+)?)\s*亿\s*(?:元)?\s*(?:市场|规模)", all_bodies)
-        if m2:
-            tam_heuristic = f"¥{m2.group(1)}亿"
+        growth_context_pat = re.compile(
+            r"(?:增长|增速|CAGR|复合增长|同比|增幅|年均增长|涨超|涨幅|暴涨|翻倍|提升|上升|上涨|净利齐涨)"
+            r"[^%]{0,20}?([+\-]?\d{1,3}(?:\.\d+)?)\s*%"
+        )
+        m = growth_context_pat.search(all_bodies)
+        if m:
+            growth_heuristic = f"{m.group(1)}%/年"
+        else:
+            # 次级兜底：含"行业"/"市场" 前后的 %
+            m2 = re.search(
+                r"(?:行业|市场|产业)[^%]{0,30}?([+\-]?\d{1,3}(?:\.\d+)?)\s*%|"
+                r"([+\-]?\d{1,3}(?:\.\d+)?)\s*%\s*(?:的?增长|的?增速)",
+                all_bodies,
+            )
+            if m2:
+                val = m2.group(1) or m2.group(2)
+                growth_heuristic = f"{val}%/年"
 
-    # v2.12.1 · penetration 渗透率提取（原版完全缺失）
+    # TAM 추출 · ko 면 한국어 단위(조/억 원)
+    tam_heuristic = "—"
+    if ko:
+        # "시장 규모 X조원" / "X조 원 규모" / "X억원 시장"
+        tm = re.search(
+            r"(?:시장\s*규모|시장규모|시장|규모|TAM|전망)[^\d]{0,15}?([\d.,]+)\s*(조|억)\s*원?", all_bodies
+        ) or re.search(r"([\d.,]+)\s*(조|억)\s*원?\s*(?:시장|규모)", all_bodies)
+        if tm:
+            tam_heuristic = f"₩{tm.group(1).replace(',', '')}{tm.group(2)}"
+    else:
+        tam_context_pat = re.compile(
+            r"(?:市场规模|规模达|规模约|将达|产业规模|TAM|行业规模)[^亿]{0,20}?(\d{1,5}(?:\.\d+)?)\s*亿"
+        )
+        m = tam_context_pat.search(all_bodies)
+        if m:
+            tam_heuristic = f"¥{m.group(1)}亿"
+        else:
+            m2 = re.search(r"(\d{1,5}(?:\.\d+)?)\s*亿\s*(?:元)?\s*(?:市场|规模)", all_bodies)
+            if m2:
+                tam_heuristic = f"¥{m2.group(1)}亿"
+
+    # v2.12.1 · penetration 침투율 추출
     penetration_heuristic = "—"
-    pen_pat = re.compile(
-        r"渗透率[^%]{0,10}?(\d{1,3}(?:\.\d+)?)\s*%|"
-        r"(\d{1,3}(?:\.\d+)?)\s*%\s*的?渗透率"
-    )
-    m = pen_pat.search(all_bodies)
+    if ko:
+        m = re.search(
+            r"(?:침투율|보급률|채택률)[^%]{0,10}?(\d{1,3}(?:\.\d+)?)\s*%|"
+            r"(\d{1,3}(?:\.\d+)?)\s*%\s*(?:침투율|보급률|채택률)", all_bodies
+        )
+    else:
+        pen_pat = re.compile(
+            r"渗透率[^%]{0,10}?(\d{1,3}(?:\.\d+)?)\s*%|"
+            r"(\d{1,3}(?:\.\d+)?)\s*%\s*的?渗透率"
+        )
+        m = pen_pat.search(all_bodies)
     if m:
         val = m.group(1) or m.group(2)
         penetration_heuristic = f"{val}%"
 
-    # 生命周期关键词扫描
+    # 산업 사이클(생명주기) 키워드 스캔 · ko 면 한국어 라벨(값이 그대로 노출됨)
     lifecycle = "—"
-    for keyword, label in [("成长期", "成长期"), ("成熟期", "成熟期"),
-                           ("下行期", "下行期"), ("衰退", "衰退期"),
-                           ("拐点", "拐点"), ("景气", "景气上行")]:
+    if ko:
+        _cycle = [("성장기", "성장기"), ("성숙기", "성숙기"), ("쇠퇴기", "쇠퇴기"),
+                  ("쇠퇴", "쇠퇴기"), ("하락", "하락기"), ("변곡", "변곡점"),
+                  ("업황 개선", "업황 개선"), ("호황", "업황 호조"), ("불황", "업황 부진")]
+    else:
+        _cycle = [("成长期", "成长期"), ("成熟期", "成熟期"),
+                  ("下行期", "下行期"), ("衰退", "衰退期"),
+                  ("拐点", "拐点"), ("景气", "景气上行")]
+    for keyword, label in _cycle:
         if keyword in all_bodies:
             lifecycle = label
             break

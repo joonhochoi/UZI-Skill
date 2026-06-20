@@ -403,11 +403,20 @@ medium/deep 점검에서 드러난 "리포트 본문 중국어"(평가위원 대
 **3차 후속 처리 완료 (2026-06-20)**:
 - ✅ **정성 쿼리 industry/moat/trap K 분기** — `fetch_industry._dynamic_industry_overview`(업황/시장규모/사이클 + 일반 search, 중국 권위도메인 회피), `fetch_moat`(특허/전환비용/네트워크/점유율/R&D 한국어 + `{name} 주식` 앵커), `fetch_trap_signals`(한국 작전주 맥락 `SIGNALS_KO` 8신호 — 리딩방/유튜브/텔레그램/관리종목 + level/권고문 ko). 모두 UZI_LANG=ko 분기, 비K 중국어 보존.
 
+**4차 후속 처리 완료 (2026-06-20) — 휴리스틱 + 단위 + 중국 검색 노이즈 근본 제거**:
+- ✅ **휴리스틱 점수 키워드 K 분기** — `fetch_moat`(4차원 `pos_kws`/`neg_kws` 한국어: 특허/락인/네트워크/점유율), `fetch_sentiment`(`positive_kws`/`negative_kws` 한국어: 호재·강세·상한가 / 악재·하락·손절). 비K 중국어 보존.
+- ✅ **industry 추출 정규식·단위 K 분기** — `fetch_industry` growth(`성장률 X%`)/TAM(`X조원·X억원` → `₩`)/penetration(`침투율 X%`)/lifecycle(`성장기/성숙기/쇠퇴기/업황 호조`) 모두 한국어 정규식·라벨. 中 단위(亿) 의존 제거.
+- ✅ **중국 검색 노이즈 근본 차단 (web_search 인프라)** — ① `search()` K 모드 region `cn-zh`→`kr-ko` + region별 캐시 분리, ② `_drop_cjk_heavy` 필터(한글 없는 한자 dominant 기사 drop), ③ `search_trusted` ko 가드(중국 권위 도메인 `site:` 회피 → 일반 search), ④ autofill `_autofill_qualitative_via_mx` 6개 query 템플릿 ko 한국어화 + **MX(중국 妙想 API) K 비활성**(ddgs만). → 中 발改委 정책/中 기사 snippet 완전 소멸.
+- ✅ **평가위원 프로파일 한국어화** — `investor_profile.PROFILES_KO`(28명) + `GROUP_DEFAULT_KO`(9그룹) + `get_profile` ko 분기. CJK=0 검증·키 완전 일치. D8 비침습.
+- ✅ **fetch_futures/chain/contests K 분기** — futures fallback("직접 연관 선물 없음"), chain `_note`, contests(19_실전대회) K graceful 미지원(중국 雪球/淘股吧 무관).
+- ✅ **locale_ko 후처리 보강** — UI 라벨(点击查看完整结论/极化后/抄作业면板)·업종용어·면책조항 정적 문장·차트/peers 라벨 다수 매핑.
+- **성과(005930 medium 가시 텍스트 한자)**: 999 → **82 (약 92% 제거)**. 남은 잔여는 단일 한자 조사/단위(`次/份/个/的/并` 등)로 매핑 시 오치환 위험 → 의도적 보류.
+- **검증**: K 단위 테스트 92+ GREEN, D8 비ko 경로 보존(default lang `zh` → 中文 프로파일·regex 유지) 확인. 51 pytest 실패는 전부 `akshare`/`pandas` 미설치 + `institutional.py` 3.11 f-string baseline(내 변경 무관).
+
 **계속할 것 (추후)**:
 - **6_fund_holders 공모펀드 보유** — 무료 API 부재. 에프앤가이드/제로인 유료 연동 시 fund_managers 스키마 충족 가능(현재 graceful skip + DART 대량보유로 일부 보완).
 - **agent_analysis 런타임 CJK 가드** — deep role-play 산출물(agent가 쓴 표기)에 한자 혼용 가능 → 렌더 전 CJK 가드 또는 작업 정의에 CJK=0 명시.
-- **trap/moat 휴리스틱 키워드 한국어 매칭** — `fetch_trap_signals.SIGNALS_KO.positive_kws`(완료) 외, `fetch_moat` 의 `pos_kws`("龙头/第一") 등 점수 휴리스틱은 아직 중국어 → K 결과 매칭 부정확(snippet 은 한국어 제공, agent 가 dim_commentary 작성).
-- **industry TAM/growth 휴리스틱** — `fetch_industry` 의 "亿元/XX亿" 추출 정규식이 중국 단위 기반 → 한국(조원/억원) 추출 보강 필요(쿼리·snippet 은 한국어).
+- **잔여 단일 한자(~80)** — 차트/disclaimer의 조사·단위 단편. 근본은 footer disclaimer 원문 소스(분할 f-string, grep 미포착)를 찾아 K 분기하는 것이나 영향 경미.
 
 ---
 

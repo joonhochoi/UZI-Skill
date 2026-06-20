@@ -236,6 +236,202 @@ GENERIC_FALLBACK: dict[str, str] = {
 }
 
 
+# ═══════════════════════════════════════════════════════════════
+# 한국어 병렬 출력부 (D8 · 기존 中文 PROFILES 비침습 · UZI_LANG=ko 시 사용)
+# ═══════════════════════════════════════════════════════════════
+PROFILES_KO: dict[str, dict[str, str]] = {
+    # ── Group A · 클래식 가치 ──
+    "buffett": {
+        "time_horizon": "10년 이상 / 영원히; 10년 보유할 생각이 없으면 10분도 보유하지 마라",
+        "position_sizing": "집중 보유, 상위 5종목이 보통 70%+; 좋은 기회는 드무니 크게 베팅",
+        "what_would_change_my_mind": "ROE 2년 연속 12% 하회 · CEO 사임 및 전략 선회 · 경영진 정직성 문제 발견 · 비즈니스 모델 붕괴(예: 섬유·신문)",
+    },
+    "graham": {
+        "time_horizon": "2~3년; 내재가치 도달 또는 2년 보유해도 시장 하회 시 매도",
+        "position_sizing": "최소 30종목 분산, 단일종목 상한 5%, 방어적 투자자의 철칙",
+        "what_would_change_my_mind": "PER × PBR > 22.5 · 유동비율 2 하회 · 2년 연속 무이익 · 배당 중단",
+    },
+    "fisher": {
+        "time_horizon": "장기 보유 5~15년, 위대한 기업이 장기 복리를 안겨주게 하라",
+        "position_sizing": "집중 10~20종목, 깊이 이해한 뒤 크게 베팅; 모르는 건 손대지 않는다",
+        "what_would_change_my_mind": "15개 핵심 포인트 중 3개 이상 악화 · 경영진이 투자자에게 솔직하지 않음 · R&D 투자 비중 급락 · 이익률 지속 잠식",
+    },
+    "munger": {
+        "time_horizon": "좋은 사업은 평생 보유, 펀더멘털이 영구적으로 악화되지 않는 한",
+        "position_sizing": "극도로 집중, 3~5종목이 포트폴리오 80%+; 거꾸로 생각하라, 분산은 능력 부족의 인정",
+        "what_would_change_my_mind": "거꾸로 생각하라—'이 회사가 가장 망하기 쉬운 경로는?' 답이 2개 이상 보이면 경계 · 경영진 인센티브 어긋남",
+    },
+    "klarman": {
+        "time_horizon": "유연하게, 기회 있으면 출수 없으면 현금 보유; 특수상황 이벤트 드리븐 위주",
+        "position_sizing": "30~50% 현금으로 기회 대기 가능; 단일종목 5~10%, 특수상황은 더 높게",
+        "what_would_change_my_mind": "안전마진 소멸(시총이 NAV 근접) · 촉매 지연 또는 취소 · 더 좋은 저평가 기회 출현",
+    },
+    # ── Group B · 성장파 ──
+    "lynch": {
+        "time_horizon": "기업 스토리가 끝날 때까지, 보통 3~5년; 소형 fast-grower는 더 짧게",
+        "position_sizing": "30~50종목 다양화, 6유형(안정/경기순환/고성장/저성장/회생/자산주)으로 배분",
+        "what_would_change_my_mind": "PEG > 2(성장이 밸류에이션을 못 받침) · 재고/매출채권 증가율이 매출 초과 · 스토리 미실현 · 일상에서 접하던 인기 소멸",
+    },
+    "oneill": {
+        "time_horizon": "cup-and-handle 실패 또는 50일선 이탈까지; 보통 3~12개월",
+        "position_sizing": "초기 25%, 돌파 시 100%까지 추가; CANSLIM 7요소 미달이면 진입 안 함",
+        "what_would_change_my_mind": "M 시장 약세 전환 · 매수가 7~8% 하회 시 무조건 손절 · RS 강도 상위 20% 이탈 · 분기 EPS 감속",
+    },
+    "thiel": {
+        "time_horizon": "Power law 수익, 한 번의 정답이 모든 오답을 커버; IPO/피인수까지 보유",
+        "position_sizing": "극도로 비분산, 단일 베팅 30%+ 가능; 독점을 먼저 찾고 밸류에이션은 나중",
+        "what_would_change_my_mind": "경쟁 진입(독점 붕괴) · 네트워크 효과가 신기술에 우회당함 · 경영진 지분 매도 선회",
+    },
+    "wood": {
+        "time_horizon": "5년 시계로 파괴적 기술 변곡점을 본다; 단기 변동은 매도 이유가 아니다",
+        "position_sizing": "고베타 포트폴리오 단일종목 10%+ 가능, 10배 상승 위해 50% 낙폭 감내",
+        "what_would_change_my_mind": "S-curve 채택률 기울기 평탄화 · 규제 금지 · 핵심기술이 새 패러다임에 대체",
+    },
+    # ── Group C · 매크로 헤지 ──
+    "soros": {
+        "time_horizon": "재귀성 순환 한 사이클, 보통 수주~수개월, 언제든 뒤집힐 수 있다",
+        "position_sizing": "한 번에 크게 베팅(1992 파운드화 같은), 그러나 언제든 반대로 돌 수 있다",
+        "what_would_change_my_mind": "시장이 내 내러티브 검증을 멈춤(재귀성 반전) · 펀더멘털이 오차범위 초과 · 더 좋은 비대칭 기회 출현",
+    },
+    "dalio": {
+        "time_horizon": "All Weather 전천후 배분, 리밸런싱 주기 약 1년; 단일 베팅은 며칠~몇 달",
+        "position_sizing": "리스크 패리티: 각 자산군의 변동성 기여를 균등하게, 단일종목 안 봄",
+        "what_would_change_my_mind": "경기 사이클 사분면 전환(성장↑↓ × 인플레↑↓) · 중앙은행 정책 변곡점 · 장기채 금리 구조 이탈",
+    },
+    "druck": {
+        "time_horizon": "유연하게, 수주~2년; 맞든 틀리든 빠르게 반응",
+        "position_sizing": "틀릴 땐 소액만, 극도로 맞을 땐 all-in; 집중도 매우 높음",
+        "what_would_change_my_mind": "중앙은행 입장 선회 · 자신의 손익비 판단이 시장에서 반증됨 · 더 큰 손익비의 종목 발견",
+    },
+    "marks": {
+        "time_horizon": "완전한 시장 사이클(보통 5~7년), 사이클 위치가 진출입 결정",
+        "position_sizing": "역발상: 남들이 살 때 안 사고, 남들이 버릴 때 산다; 단일종목 비중은 리스크 가격 따라 조정",
+        "what_would_change_my_mind": "2차적 사고 반전(다수에 대한 내 판단이 바뀜) · 리스크 프리미엄이 극값으로 수렴 · 사이클 진자 정점 도달",
+    },
+    # ── Group D · 기술 추세 ──
+    "livermore": {
+        "time_horizon": "주 상승파를 다 먹을 때까지, 보통 수주~수개월, 버티는 게 매매보다 어렵다",
+        "position_sizing": "시험매수-검증-추가-집중 피라미드; 틀리면 즉시 손절하고 나간다",
+        "what_would_change_my_mind": "핵심 지지선 이탈 · 주도주 약화 · 시장 전체 톤 변화 · 어떤 반대 신호든 '즉시 빠져나간다'",
+    },
+    "minervini": {
+        "time_horizon": "VCP 돌파 후 3~6개월 주 상승파; 20일선 이탈 시 즉시 축소",
+        "position_sizing": "초기 25% 비중, 확인 후 100%까지 추가; 손실은 전체의 2% 초과 금지",
+        "what_would_change_my_mind": "10/20일선 이탈 · 대량 하락 · 추세 템플릿 8조건 중 3개 이상 실패",
+    },
+    # ── Group E · 중국 가치투자 ──
+    "duan": {
+        "time_horizon": "10~20년, 좋은 회사는 최대한 길게; 이해했으면 크게 베팅",
+        "position_sizing": "극도로 집중: Apple이 그의 포트폴리오 절반 이상; 진짜 이해한 것엔 all-in",
+        "what_would_change_my_mind": "사업의 본질이 변함(분기 변동 아님) · 경영진 인센티브 이탈 · 자신이 정말 이해 못 하게 되면 매도",
+    },
+    "zhangkun": {
+        "time_horizon": "3~5년 중기; 주류·제약·대형소비재는 한 사이클을 충분히 봐야",
+        "position_sizing": "이팡다 블루칩 상위10이 장기 70%+, 낮은 회전율; 좋은 회사는 조정을 기다린다",
+        "what_would_change_my_mind": "ROE 2년 연속 업종 평균 하회 · 밸류에이션 분위 90% 초과 · 경영진 대규모 변동",
+    },
+    "fengliu": {
+        "time_horizon": "3~6개월 저평가 회복 대기, 약자 체계는 예측하지 않고 대응만",
+        "position_sizing": "균형 지향, 단일종목 10% 이하; 충분한 가격차로 틀려도 버틸 수 있게",
+        "what_would_change_my_mind": "펀더멘털 반증(주문/생산능력/고객 피드백) · 가격 회복 완료 · 더 큰 저평가 발견",
+    },
+    "dengxiaofeng": {
+        "time_horizon": "2~4년 사이클 횡단, 경기순환 업종과 밸류체인을 깊이 연구",
+        "position_sizing": "밸류체인 선두주 집중, 단일종목 10~20%; 사이클 바닥 매집·정점 매도",
+        "what_would_change_my_mind": "생산능력 사이클 정점 신호 · 가격 하락 실현 · 전방 수요 반증",
+    },
+    # ── Group F · A주 단타(游资) ──
+    "zhao_lg": {
+        "time_horizon": "T+2~T+5, 상한가 주 상승파; 강도 약화 시 즉시 이탈",
+        "position_sizing": "주도 섹터 비중 10~20%, T+1에 분기 따라 가감; 주말 넘기는 종목은 절대 오버나이트 안 함",
+        "what_would_change_my_mind": "상한가에서 매도 출회 · 주도주 상한가 풀림 · 거래대금 순위에 기관 상대방 출현 · 거래량 미달",
+    },
+    "zhang_mz": {
+        "time_horizon": "핵심 대장주 7~15일, 주 상승 말기까지",
+        "position_sizing": "최강 주도주 매매, 크게 베팅; 이어받는 중군은 분산",
+        "what_would_change_my_mind": "테마 논리 반증 · 시장 시스템 리스크 · 자기 자리가 추종 매수에 리듬 파괴",
+    },
+    "lasa": {
+        "time_horizon": "1~2일, 첫 상한가/둘째 상한가 위주",
+        "position_sizing": "단일종목 5~15%, 상한가 안착률 높을 때 추가; 안착 강도 약하면 이탈",
+        "what_would_change_my_mind": "상한가 안착 시간 지연 · 개장 즉시 매도 출회 · 심리 사이클이 흥분에서 분기로 전환",
+    },
+    # ── Group G · 퀀트 ──
+    "simons": {
+        "time_horizon": "평균 보유 < 2일; 수초~수개월 조합, 전적으로 모델이 결정",
+        "position_sizing": "수천 종목 등가중, 단일종목 비중 < 0.5%; 리스크 예산은 공분산으로 결정",
+        "what_would_change_my_mind": "모델 신호 Sharpe 0.5 하회 · 팩터 감쇠 · 시장 구조 변화(예: 거래제도 변경)",
+    },
+    # ── Group H · AI 길목/병목 헌터 ──
+    "serenity": {
+        "time_horizon": "thesis-driven, 정보 격차에서 기관 rotation 실현까지, 보통 수개월~1~2년; 병목 논리가 깨지지 않으면 보유",
+        "position_sizing": "극도 집중 + 약 1.3~1.4x 마진, 최고 신념의 길목엔 풀베팅; 밸류체인 밖은 일률 0 비중",
+        "what_would_change_my_mind": "길목이 반증됨(대체안 출현/신규 생산능력 방출) · 공급이 긴축에서 완화로 · 전방 roadmap이 해당 노드 우회 · 밸류에이션이 병목 반영하고 정보 격차 소멸",
+    },
+    "ghzw": {
+        "time_horizon": "초단기 이어받기 T+1~T+5(보유 중위값 1일) · 시대급 구도주는 수개월 보유해 3~5배 노림",
+        "position_sizing": "동시 3~5종목 · 최우선 집중은 보통 50% · 여유자금은 역RP · 고점주는 절대 풀베팅 안 함",
+        "what_would_change_my_mind": "주력 라인 퇴조 · 약→강 전환 실패/호가 받침 소멸 · 시장 시스템 리스크(스스로 10년 최대 약점 인정 · 15% 먹으면 휴식)",
+    },
+}
+
+
+GROUP_DEFAULT_KO: dict[str, dict[str, str]] = {
+    "A": {
+        "time_horizon": "3~10년, 회사가 내재가치 실현하길 기다림",
+        "position_sizing": "집중 10~20종목, 고확실성 기회에 크게 베팅",
+        "what_would_change_my_mind": "펀더멘털 영구 악화 · 경영진 정직성 훼손 · 안전마진이 시장에 잠식",
+    },
+    "B": {
+        "time_horizon": "2~5년, 회사 성장 곡선을 따라",
+        "position_sizing": "중간 집중 20~30종목, 가장 강한 성장주 크게",
+        "what_would_change_my_mind": "성장 실속 · 밸류에이션과 성장 심각 괴리(PEG>2) · 해자 돌파",
+    },
+    "C": {
+        "time_horizon": "수주~수개월, 거시 리듬과 유동성 창 따라",
+        "position_sizing": "손익비 따라 배분, 맞을 땐 크게, 틀릴 땐 즉시 인정",
+        "what_would_change_my_mind": "거시 내러티브 반증 · 중앙은행/정책 선회 · 손익비가 불리해짐",
+    },
+    "D": {
+        "time_horizon": "수주~3개월, 추세 따라, 이탈하면 이탈",
+        "position_sizing": "피라미드 추가, 손실은 단일 베팅 2% 이내로 엄격 통제",
+        "what_would_change_my_mind": "핵심 이평선 이탈 · 거래량 다이버전스 · 상대강도 선두 이탈",
+    },
+    "E": {
+        "time_horizon": "3~5년, 좋은 회사가 좋은 가격 주길 기다림",
+        "position_sizing": "집중 지향, 단일종목 5~15%; 깊이 연구 후 크게",
+        "what_would_change_my_mind": "ROE/순이익률 업종 하회 · 경영진 또는 핵심사업 대변동 · 밸류에이션 분위 과도",
+    },
+    "F": {
+        "time_horizon": "T+1~T+5 초단기, 호가 보고 결정",
+        "position_sizing": "단일종목 5~20%, 강할 때 추가·약할 때 즉시 이탈",
+        "what_would_change_my_mind": "상한가 매도 출회/풀림 · 거래량 미동조 · 거래대금 상대방이 자기 자리 압도",
+    },
+    "G": {
+        "time_horizon": "모델이 결정, 보통 수일~수주",
+        "position_sizing": "등가중 또는 리스크 패리티 분산, 단일 비중은 모델이 계산",
+        "what_would_change_my_mind": "팩터 IC 감쇠 · Sharpe 하락 · 시장 미시구조 변화",
+    },
+    "H": {
+        "time_horizon": "5~10년 기술 사이클, 플랫폼 이전 따라(AI/EV/AGI/디지털자산)",
+        "position_sizing": "극도 집중—가장 명확히 보이는 밸류체인 노드에 All in",
+        "what_would_change_my_mind": "기술 노선 붕괴 · scaling 실패 · 밸류체인 노드 우회당함",
+    },
+    "I": {
+        "time_horizon": "6~24개월, 시장 미반영 매복에서 병목 공인까지",
+        "position_sizing": "고신념 집중 1~3종목 길목 소형주, 틀리면 즉시 청산",
+        "what_would_change_my_mind": "대체안 양산 · 생산능력 병목 해소 · 길목이 시장에 충분히 반영됨",
+    },
+}
+
+
+GENERIC_FALLBACK_KO: dict[str, str] = {
+    "time_horizon": "—",
+    "position_sizing": "—",
+    "what_would_change_my_mind": "—",
+}
+
+
 def get_profile(investor_id: str, group: str = "") -> dict[str, str]:
     """Return the authentic 3-field profile for one investor.
 
@@ -251,6 +447,19 @@ def get_profile(investor_id: str, group: str = "") -> dict[str, str]:
     返回：
       {'time_horizon': ..., 'position_sizing': ..., 'what_would_change_my_mind': ...}
     """
+    # K(한국) · UZI_LANG=ko 면 한국어 프로파일 (D8 · 기존 中文 경로 비침습)
+    try:
+        from lib.i18n import get_language
+        _ko = (get_language() == "ko")
+    except Exception:
+        _ko = False
+    if _ko:
+        if investor_id in PROFILES_KO:
+            return dict(PROFILES_KO[investor_id])
+        if group and group in GROUP_DEFAULT_KO:
+            return dict(GROUP_DEFAULT_KO[group])
+        return dict(GENERIC_FALLBACK_KO)
+
     if investor_id in PROFILES:
         return dict(PROFILES[investor_id])
     if group and group in GROUP_DEFAULT:

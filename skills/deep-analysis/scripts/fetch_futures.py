@@ -68,6 +68,21 @@ def main(industry: str) -> dict:
     name, code = linked
 
     if not code:
+        try:
+            from lib.i18n import get_language
+            _ko = (get_language() == "ko")
+        except Exception:
+            _ko = False
+        if _ko:
+            return {
+                "data": {
+                    "linked_contract": "직접 연관 선물 상품 없음",
+                    "contract_trend": "—",
+                    "note": f"{industry} 업종은 선물시장과 강하게 연관된 상품이 없음",
+                },
+                "source": "INDUSTRY_FUTURES mapping",
+                "fallback": False,
+            }
         return {
             "data": {
                 "linked_contract": "无直接关联品种",

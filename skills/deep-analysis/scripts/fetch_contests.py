@@ -226,6 +226,23 @@ def summarize(xq_cubes: list[dict], tgb: list[dict], ths: list[dict]) -> dict:
 def main(ticker: str) -> dict:
     ti = parse_ticker(ticker)
 
+    # K(한국) 시장은 중국 실전투자대회(雪球/淘股吧/同花顺/大盘手) 데이터 무관 → graceful 미지원
+    if ti.market == "K":
+        _empty = summarize([], [], [])
+        _empty["xueqiu_login_required"] = False
+        _empty["xueqiu_source"] = "n/a"
+        return {
+            "ticker": ti.full,
+            "data": {
+                "xueqiu_cubes": [], "xueqiu_meta": {}, "tgb_mentions": [],
+                "ths_simu": [], "dpswang": [], "summary": _empty,
+                "fallback_queries": [],
+                "_note": "한국 시장은 중국 실전투자대회(실전 포트폴리오 랭킹) 데이터를 지원하지 않습니다",
+            },
+            "source": "n/a (K market · 중국 실전대회 미지원)",
+            "fallback": True,
+        }
+
     # v2.7.1 · cached + new (cubes, meta) signature
     def _xq_call():
         cubes, meta = fetch_xueqiu_cubes(ti)

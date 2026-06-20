@@ -123,27 +123,31 @@ def main(ticker: str) -> dict:
             ],
         }
 
-    # Score each moat dimension (1-10)
-    intangible_score = _evaluate(
-        results["intangible"]["text"],
-        pos_kws=["专利", "核心技术", "自主", "垄断", "独家", "行业领先", "国产替代"],
-        neg_kws=["模仿", "同质", "无差异"],
-    )
-    switching_score = _evaluate(
-        results["switching"]["text"],
-        pos_kws=["绑定", "独家", "长期合作", "认证", "唯一", "二供", "一供"],
-        neg_kws=["易替换", "议价弱"],
-    )
-    network_score = _evaluate(
-        results["network"]["text"],
-        pos_kws=["平台", "生态", "网络", "用户基数"],
-        neg_kws=["单点", "无网络"],
-    )
-    scale_score = _evaluate(
-        results["scale"]["text"],
-        pos_kws=["龙头", "第一", "领先", "最大", "份额", "国产替代"],
-        neg_kws=["追赶", "落后", "份额低"],
-    )
+    # Score each moat dimension (1-10) · ko 면 한국어 키워드(한국어 snippet 매칭용)
+    if ko:
+        _KW = {
+            "intangible": (["특허", "핵심기술", "독자기술", "독점", "독보적", "업계 선두", "국산화"],
+                           ["모방", "동질", "차별성 없"]),
+            "switching": (["락인", "독점 공급", "장기계약", "인증", "유일", "단독 공급", "납품"],
+                          ["대체 용이", "협상력 약"]),
+            "network": (["플랫폼", "생태계", "네트워크", "사용자 기반"], ["단일", "네트워크 없"]),
+            "scale": (["1위", "선두", "점유율", "최대", "규모", "국산화"],
+                      ["추격", "후발", "점유율 낮"]),
+        }
+    else:
+        _KW = {
+            "intangible": (["专利", "核心技术", "自主", "垄断", "独家", "行业领先", "国产替代"],
+                           ["模仿", "同质", "无差异"]),
+            "switching": (["绑定", "独家", "长期合作", "认证", "唯一", "二供", "一供"],
+                          ["易替换", "议价弱"]),
+            "network": (["平台", "生态", "网络", "用户基数"], ["单点", "无网络"]),
+            "scale": (["龙头", "第一", "领先", "最大", "份额", "国产替代"],
+                      ["追赶", "落后", "份额低"]),
+        }
+    intangible_score = _evaluate(results["intangible"]["text"], *_KW["intangible"])
+    switching_score = _evaluate(results["switching"]["text"], *_KW["switching"])
+    network_score = _evaluate(results["network"]["text"], *_KW["network"])
+    scale_score = _evaluate(results["scale"]["text"], *_KW["scale"])
 
     # Build qualitative descriptions
     def _top_body(key: str, n: int = 1) -> str:

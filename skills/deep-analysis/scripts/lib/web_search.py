@@ -8,6 +8,7 @@ All searches go through lib/cache.py so repeated queries are cheap (12h TTL).
 from __future__ import annotations
 
 import os
+import re
 import time
 from typing import Callable, Optional
 
@@ -157,6 +158,36 @@ def _is_garbage_result(r: dict) -> bool:
     return sum(1 for p in _GARBAGE_PATTERNS if p in text) >= 2
 
 
+_RE_HAN = re.compile(r"[一-鿿]")
+_RE_HANGUL = re.compile(r"[가-힣]")
+
+
+def _drop_cjk_heavy(results: list[dict]) -> list[dict]:
+    """K(한국) 검색 결과에서 中文 기사(한글 거의 없이 한자 dominant) 제거.
+
+    ddgs 가 한국어 쿼리에도 중국 정책/기사를 반환하는 노이즈를 차단한다
+    (예: '消费品以旧换新' 중국 발改委 문서). 한국 기사는 한글 위주라 보존.
+    전부 drop 되면 원본을 유지(빈 결과 방지)."""
+    kept = []
+    for r in results:
+        if r.get("error") or r.get("_budget_exceeded"):
+            kept.append(r)
+            continue
+        text = (r.get("title", "") + " " + r.get("body", ""))
+        if not text.strip():
+            kept.append(r)
+            continue
+        h = len(_RE_HAN.findall(text))
+        k = len(_RE_HANGUL.findall(text))
+        # 한글 0 + 한자 다수 = 중국어 기사 / 한자·한글 혼합인데 한자가 압도적
+        if k == 0 and h >= 6:
+            continue
+        if h > 0 and k > 0 and h / (h + k) > 0.60:
+            continue
+        kept.append(r)
+    return kept or results
+
+
 def search(query: str, max_results: int = 10, cache_key_prefix: str = "ws") -> list[dict]:
     """Perform a cached web search. Returns list of {title, body, url, source}.
 
@@ -165,7 +196,15 @@ def search(query: str, max_results: int = 10, cache_key_prefix: str = "ws") -> l
 
     v2.10.1 · 命中 cache 的不占预算；未命中 cache 时检查 UZI_DDG_BUDGET 预算。
     """
-    key = f"{cache_key_prefix}__{query[:100]}__n{max_results}"
+    # K(한국) 모드: region 을 kr-ko 로 (cn-zh 고정 시 중국 결과가 우선됨) · D8 비침습
+    try:
+        from lib.i18n import get_language
+        _ko = (get_language() == "ko")
+    except Exception:
+        _ko = False
+    _region = "kr-ko" if _ko else "cn-zh"
+    # region 별 캐시 분리(기존 cn-zh 캐시 재사용 방지)
+    key = f"{cache_key_prefix}__{'ko' if _ko else 'zh'}__{query[:100]}__n{max_results}"
 
     # 先检查 cache 是否命中 —— 命中不占预算
     from lib.cache import cached, TTL_HOURLY  # re-import for scope
@@ -176,10 +215,13 @@ def search(query: str, max_results: int = 10, cache_key_prefix: str = "ws") -> l
             return [{"_budget_exceeded": True,
                      "body": "全局 ddgs 预算已用尽（UZI_DDG_BUDGET），agent 请用 cached / hardcoded 数据"}]
         _budget_mark_used()
-        return _ddg_search(query, max_results=max_results)
+        return _ddg_search(query, max_results=max_results, region=_region)
 
     raw = cached("_global", key, _fetcher, ttl=_SEARCH_TTL)
-    return [r for r in raw if not _is_garbage_result(r) and not r.get("_budget_exceeded")]
+    out = [r for r in raw if not _is_garbage_result(r) and not r.get("_budget_exceeded")]
+    if _ko:
+        out = _drop_cjk_heavy(out)
+    return out
 
 
 def search_trusted(
@@ -207,6 +249,13 @@ def search_trusted(
 
     返回：与 search() 一致的 list[dict]。若 dim 无映射，回退到普通 search。
     """
+    # K(한국)은 중국 권위 도메인(site: 필터)을 쓰지 않음 → 일반 search(한국어 쿼리·kr-ko·CJK filter)
+    try:
+        from lib.i18n import get_language
+        if get_language() == "ko":
+            return search(query, max_results=max_results)
+    except Exception:
+        pass
     domains = trusted_domains_for(dim_key)
     if extra_sites:
         domains = tuple(list(domains) + list(extra_sites))

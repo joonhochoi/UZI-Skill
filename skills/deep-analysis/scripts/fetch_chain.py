@@ -146,7 +146,9 @@ def main(ticker: str) -> dict:
             "downstream": downstream,
             "client_concentration": "—",
             "supplier_concentration": "—",
-            "_note": "上下游基于主营/产品/经营范围推断，精确数据需年报附注",
+            "_note": ("상하류는 주력사업·제품·사업영역 기반 추정 · 정밀 데이터는 사업보고서 주석 필요"
+                      if ti.market == "K"
+                      else "上下游基于主营/产品/经营范围推断，精确数据需年报附注"),
         },
         "source": "akshare:stock_zygc_em + stock_zyjs_ths",
         "fallback": False,
