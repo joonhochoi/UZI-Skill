@@ -429,12 +429,18 @@ medium/deep 점검에서 드러난 "리포트 본문 중국어"(평가위원 대
 - **성과(000660 deep 가시 한자)**: 113 → **37 (deep 258 대비 86%↓, medium 82보다 적음)**. 남은 37은 단일 한자 조사/단위/인명(人/次/份/日/李/美 등)으로 매핑 시 오치환 위험 → 종착.
 - 참고: `COMMENT_TEMPLATES`/`GROUP_VERDICTS`(score_fns)는 dead code(평가위원 코멘트는 `investor_personas.get_comment`=PERSONAS_KO 경유)로 확인 → 손대지 않음.
 
+**7차 후속 처리 완료 (2026-06-20) — 밸류 분위 채움 + fund/chain K 마감**:
+- ✅ **밸류 분위(pe/pb_quantile) 산출** — 네이버 `finance/annual`+`quarter` rowList 의 PER/PBR 시계열(양수만) → `kr_data_sources.parse_pe_pb_series`/`naver_pe_pb_series` 신설. `fetch_valuation` K 분기에서 현재값 백분위 계산(SK하이닉스 검증: PER 9포인트 5.34~39.2, 현재 26.7 → **89분위·고평가**). 라벨 "최근 PER N분위". 단위 테스트 2 추가.
+- ✅ **밸류 게이지 한자 ko 분기** — 분위 채우며 노출된 `dim_viz._viz_valuation`(게이지 "PER 분위" + PE 밴드 범례 "빨강=고평가/노랑=적정/초록=저평가") + `score_fns.score_dimensions`(밸류 label/reasons "PER 최근 고점 구간" 등).
+- ✅ **6_fund_holders K pass 명시 표기** — `special_cards.render_fund_managers`(deep 경로) + `renderer/fund.FundRenderer`(pipeline 경로) 모두 K 분기: "한국 시장 · 공모펀드 보유 현황은 무료 API 미제공으로 미지원 (DART 5%+ 대량보유는 거버넌스 항목 참고)". fund 렌더는 deep=assemble_report.render_fund_managers 경유임을 확인.
+- ✅ **5_chain 한국어 라벨** — chain 섹션 제목/필드(밸류체인 상·하류/상류/하류/주요 제품/고객·공급사 집중도) locale. **요구 스키마**: upstream/downstream/products/client_concentration/supplier_concentration/main_business_breakdown(데이터 소스는 DART 사업보고서 "사업의 내용" 또는 네이버 company 개요 — 후속).
+- **성과(000660 deep 가시 한자)**: 게이지 노출분 포함 101 → **67**(단일 한자 단편만 잔존).
+
 **계속할 것 (추후)**:
-- **6_fund_holders 공모펀드 보유** — 무료 API 부재. 에프앤가이드/제로인 유료 연동 시 fund_managers 스키마 충족 가능(현재 graceful skip + DART 대량보유로 일부 보완).
-- **5_chain 밸류체인** — 同花顺(중국) 의존 → K 데이터 부재로 전부 null(graceful). 네이버 산업/사업보고서 기반 K 상하류 추정 보강 여지.
+- **5_chain 데이터 소스 연결** — 스키마는 확정. DART 사업보고서 "사업의 내용"(제품/원재료/매출처/매입처) 또는 네이버 company 개요에서 upstream/downstream/products 추출 구현 필요(현재 _note만, graceful).
+- **industry_pe(업종 PE 평균) null** — K 업종 PE 가중평균 소스 미연결(A주는 cninfo). 네이버 동종 비교/업종 집계로 보강 여지.
 - **agent_analysis 런타임 CJK 가드** — deep role-play 산출물(agent가 쓴 표기)에 한자 혼용 가능 → 렌더 전 CJK 가드 또는 작업 정의에 CJK=0 명시.
-- **밸류 분위(pe/pb_quantile)·industry_pe null** — K 5년 PER 분위 미산출로 밸류 점수 근거 약함. 네이버 historical PER 기반 분위 산출 보강.
-- **잔여 단일 한자(~80)** — 차트/disclaimer의 조사·단위 단편. 근본은 footer disclaimer 원문 소스(분할 f-string, grep 미포착)를 찾아 K 분기하는 것이나 영향 경미.
+- **잔여 단일 한자(~67)** — 차트/disclaimer의 조사·단위·인명 단편. 매핑 시 오치환 위험으로 보류.
 
 ---
 

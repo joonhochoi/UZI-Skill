@@ -112,6 +112,19 @@ class FundRenderer(SectionRenderer):
         """渲染 · 内部自己按 _row_type 分 full / lite."""
         managers = ctx.data.get("fund_managers") or []
         if not managers:
+            note = ctx.data.get("_note") or ""
+            try:
+                from lib.i18n import get_language
+                _ko = (get_language() == "ko")
+            except Exception:
+                _ko = False
+            # _note 가 한국어(fetch_fund_holders K graceful)면 render time 언어와 무관하게 K 표기
+            if _ko or ("한국" in note) or ("무료 API" in note):
+                # 한국 공모펀드 보유는 무료 API 부재 → K 타입은 명시적으로 미지원 표기(pass)
+                return self.render_gap(
+                    ctx,
+                    reason="한국 시장 · 공모펀드 보유 현황은 무료 API 미제공으로 미지원 (DART 5%+ 대량보유는 거버넌스 항목 참고)",
+                )
             return self.render_gap(ctx, reason="无公募基金持仓数据")
 
         # v2.15.2 · 先 enrich（补经理名 + 头像）· 这是新加的

@@ -300,3 +300,32 @@ def test_parse_industry_name():
     from lib.kr_data_sources import parse_industry_name
     name = parse_industry_name(_load("naver_industry_278.json"))
     assert name == "반도체와반도체장비"
+
+
+# ─── 밸류 분위용 PER/PBR 시계열 (finance/annual|quarter rowList) ─────
+def test_parse_pe_pb_series():
+    from lib.kr_data_sources import parse_pe_pb_series
+    raw = {"financeInfo": {"rowList": [
+        {"title": "ROE", "columns": {"202412": {"value": "31.06"}}},
+        {"title": "PER", "columns": {
+            "202312": {"value": "-11.30"},   # 적자(음수) → 제외
+            "202412": {"value": "6.40"},
+            "202512": {"value": "11.04"},
+            "202612": {"value": "-"},        # 결측 → 제외
+        }},
+        {"title": "PBR", "columns": {
+            "202412": {"value": "1.62"},
+            "202512": {"value": "3.73"},
+        }},
+    ]}}
+    pes, pbs = parse_pe_pb_series(raw)
+    assert 6.40 in pes and 11.04 in pes
+    assert -11.30 not in pes          # 음수 제외
+    assert len(pes) == 2              # 양수 2개만
+    assert 1.62 in pbs and 3.73 in pbs
+
+
+def test_parse_pe_pb_series_empty_safe():
+    from lib.kr_data_sources import parse_pe_pb_series
+    assert parse_pe_pb_series({}) == ([], [])
+    assert parse_pe_pb_series(None) == ([], [])

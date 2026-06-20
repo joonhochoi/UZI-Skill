@@ -75,6 +75,23 @@ def main(ticker: str) -> dict:
     pb_quantile_val = None
     industry_pe_avg = None
 
+    if ti.market == "K":
+        # 네이버 finance/annual+quarter PER/PBR 시계열 → 현재값의 백분위(분위)
+        try:
+            from lib.kr_data_sources import naver_pe_pb_series
+            pes, pbs = naver_pe_pb_series(ti.code)
+            if pes:
+                pe_history = sorted(pes)
+                cur_pe = basic.get("pe_ttm")
+                if cur_pe:
+                    pe_quantile_val = sum(1 for x in pes if x < cur_pe) / len(pes) * 100
+            if pbs:
+                cur_pb = basic.get("pb")
+                if cur_pb:
+                    pb_quantile_val = sum(1 for x in pbs if x < cur_pb) / len(pbs) * 100
+        except Exception:
+            pass
+
     if ti.market == "A":
         # 1. PE 5 年历史序列 via 百度股市通 (stock_zh_valuation_baidu)
         try:
@@ -194,7 +211,10 @@ def main(ticker: str) -> dict:
         "data": {
             "pe": str(cur_pe) if cur_pe is not None else "—",
             "pb": str(basic.get("pb")) if basic.get("pb") is not None else "—",
-            "pe_quantile": f"5 年 {pe_quantile_val:.0f} 分位" if pe_quantile_val is not None else "—",
+            "pe_quantile": (
+                (f"최근 PER {pe_quantile_val:.0f}분위" if ti.market == "K"
+                 else f"5 年 {pe_quantile_val:.0f} 分位")
+                if pe_quantile_val is not None else "—"),
             "pb_quantile": f"{pb_quantile_val:.0f}%" if pb_quantile_val is not None else "—",
             "industry_pe": str(industry_pe_avg) if industry_pe_avg else "—",
             "dcf": dcf_display,

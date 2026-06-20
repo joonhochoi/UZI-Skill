@@ -130,6 +130,16 @@ def render_fund_managers(managers: list) -> str:
     ]
     """
     if not managers:
+        try:
+            from lib.i18n import get_language
+            _ko = (get_language() == "ko")
+        except Exception:
+            _ko = False
+        if _ko:
+            # 한국 공모펀드 보유는 무료 API 부재 → K 타입은 명시적으로 미지원 표기(pass)
+            return ('<div style="padding:24px;text-align:center;color:#94a3b8;font-size:12px">'
+                    '한국 시장 · 공모펀드 보유 현황은 무료 API 미제공으로 미지원 '
+                    '(DART 5%+ 대량보유는 거버넌스 항목 참고)</div>')
         return '<div style="padding:24px;text-align:center;color:#94a3b8;font-size:12px">暂无公募基金持仓数据</div>'
 
     # v2.10.1 · 分 full / lite 两类：full 有 5Y 业绩在前按 5Y 降序，lite 在后按持仓%

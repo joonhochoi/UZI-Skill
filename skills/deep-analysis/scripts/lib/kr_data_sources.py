@@ -442,6 +442,48 @@ def parse_search(raw: dict) -> list[dict]:
     return out
 
 
+def parse_pe_pb_series(raw: dict) -> tuple[list[float], list[float]]:
+    """finance/annual|quarter rowList 에서 PER/PBR 양수 시계열 추출 (밸류 분위용).
+
+    rowList 각 row: {"title": "PER", "columns": {"202512": {"value": "11.04"}, ...}}
+    적자(음수)·결측("-") 은 제외 → 분위 계산에 의미있는 양수만.
+    """
+    pes: list[float] = []
+    pbs: list[float] = []
+    if not isinstance(raw, dict):
+        return pes, pbs
+    rows = (raw.get("financeInfo") or {}).get("rowList") or []
+    for row in rows:
+        title = (row.get("title") or (row.get("titleInfo") or {}).get("title") or "").strip()
+        cols = row.get("columns") or {}
+        if not isinstance(cols, dict):
+            continue
+        if title == "PER":
+            for v in cols.values():
+                val = _parse_kr_number((v or {}).get("value"))
+                if val and val > 0:
+                    pes.append(val)
+        elif title == "PBR":
+            for v in cols.values():
+                val = _parse_kr_number((v or {}).get("value"))
+                if val and val > 0:
+                    pbs.append(val)
+    return pes, pbs
+
+
+def naver_pe_pb_series(code6: str) -> tuple[list[float], list[float]]:
+    """annual+quarter PER/PBR 양수 시계열 합산 (밸류 분위용 · 절대 raise 안 함)."""
+    pes: list[float] = []
+    pbs: list[float] = []
+    for kind in ("annual", "quarter"):
+        raw = _get_json(f"{_BASE_M}/{code6}/finance/{kind}")
+        if raw:
+            p, b = parse_pe_pb_series(raw)
+            pes += p
+            pbs += b
+    return pes, pbs
+
+
 # ═══════════════════════════════════════════════════════════════
 # 네이버 fetch 함수 (네트워크 + 파서 조합 · 절대 raise 안 함)
 # ═══════════════════════════════════════════════════════════════

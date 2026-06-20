@@ -93,6 +93,11 @@ def _viz_trap(raw: dict) -> str:
 
 def _viz_valuation(raw: dict) -> str:
     import re
+    try:
+        from lib.i18n import get_language
+        _ko = (get_language() == "ko")
+    except Exception:
+        _ko = False
     q_str = str(raw.get("pe_quantile", ""))
     m = re.search(r'(\d+)', q_str)
     val = int(m.group(1)) if m else 50
@@ -102,13 +107,15 @@ def _viz_valuation(raw: dict) -> str:
     dcf = raw.get("dcf", "—")
 
     # Gauge
-    viz = f'<div style="text-align:center">{svg_gauge(val, 100, "PE 5 年分位数", color=color, unit="%")}</div>'
+    _gauge_title = "PER 분위" if _ko else "PE 5 年分位数"
+    viz = f'<div style="text-align:center">{svg_gauge(val, 100, _gauge_title, color=color, unit="%")}</div>'
 
     # PE Band historical chart
     pe_hist = raw.get("pe_history", [])
     if pe_hist:
         viz += '<div style="margin-top:12px">'
-        viz += '<div style="font-family:Fira Code;font-size:10px;color:#64748b;margin-bottom:4px">📉 PE 历史 Band · 红区=偏贵 / 黄区=合理 / 绿区=便宜</div>'
+        viz += ('<div style="font-family:Fira Code;font-size:10px;color:#64748b;margin-bottom:4px">📉 PER 밴드 · 빨강=고평가 / 노랑=적정 / 초록=저평가</div>' if _ko
+                else '<div style="font-family:Fira Code;font-size:10px;color:#64748b;margin-bottom:4px">📉 PE 历史 Band · 红区=偏贵 / 黄区=合理 / 绿区=便宜</div>')
         viz += svg_pe_band(pe_hist, width=320, height=160)
         viz += '</div>'
 

@@ -49,6 +49,11 @@ def _f(v, default=0.0):
 
 
 def score_dimensions(raw: dict) -> dict:
+    try:
+        from lib.i18n import get_language
+        _ko = (get_language() == "ko")
+    except Exception:
+        _ko = False
     dims = raw.get("dimensions", {})
     out = {}
 
@@ -169,10 +174,18 @@ def score_dimensions(raw: dict) -> dict:
     elif pe_q < 70: score_10 = 5
     elif pe_q < 85: score_10 = 3
     else: score_10 = 2
+    if _ko:
+        _val_label = f"PER {val.get('pe', '—')} · {pe_q}분위 · 업종평균 {val.get('industry_pe', '—')}"
+        _val_pass = ["PER 5년 중앙값 이하"] if pe_q < 50 else []
+        _val_fail = ["PER 최근 고점 구간(상위 분위)"] if pe_q >= 75 else []
+    else:
+        _val_label = f"PE {val.get('pe', '—')} · 5 年 {pe_q} 分位 · 行业均值 {val.get('industry_pe', '—')}"
+        _val_pass = ["PE 在 5 年中位数以下"] if pe_q < 50 else []
+        _val_fail = ["PE 已在 5 年高位区"] if pe_q >= 75 else []
     out["10_valuation"] = {"score": score_10, "weight": 5,
-                            "label": f"PE {val.get('pe', '—')} · 5 年 {pe_q} 分位 · 行业均值 {val.get('industry_pe', '—')}",
-                            "reasons_pass": ["PE 在 5 年中位数以下"] if pe_q < 50 else [],
-                            "reasons_fail": ["PE 已在 5 年高位区"] if pe_q >= 75 else []}
+                            "label": _val_label,
+                            "reasons_pass": _val_pass,
+                            "reasons_fail": _val_fail}
 
     # 11 · 治理
     gov = _get("11_governance")
