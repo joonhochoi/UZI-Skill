@@ -413,9 +413,20 @@ medium/deep 점검에서 드러난 "리포트 본문 중국어"(평가위원 대
 - **성과(005930 medium 가시 텍스트 한자)**: 999 → **82 (약 92% 제거)**. 남은 잔여는 단일 한자 조사/단위(`次/份/个/的/并` 등)로 매핑 시 오치환 위험 → 의도적 보류.
 - **검증**: K 단위 테스트 92+ GREEN, D8 비ko 경로 보존(default lang `zh` → 中文 프로파일·regex 유지) 확인. 51 pytest 실패는 전부 `akshare`/`pandas` 미설치 + `institutional.py` 3.11 f-string baseline(내 변경 무관).
 
+**5차 후속 처리 완료 (2026-06-20) — SK하이닉스(000660) deep E2E 점검 + 수정**:
+- ✅ **평가위원 패널 한국어화** — `special_cards.render_panel_insights` ko 분기(GROUP_LABELS/투표 태그 看多·看空→매수·매도/집계 문장/유파별 분포/경고문/tag_src). deep 가시 한자의 최대 소스.
+- ✅ **종합 punchline·risks ko 분기** — `score_fns`(DCF/LBO punchline·신규커버리지·구조적 이견 / PER·부채·ROE·업종경쟁 risks). 통화 ₩.
+- ✅ **16_lhb ko 분기** — `fetch_lhb` "lhb only A-share" → K는 "거래대금 상위 매매주체 공시는 중국 A주 전용 제도 · 한국 미지원".
+- ✅ **DCF 단위 라벨 K 분기** — `fetch_valuation` `¥…亿` → K는 `₩…조`(예: ₩864.7조).
+- ✅ **peer PER 이상치 정제** — `fetch_peers`+`stock_features` 0<pe≤150 필터(적자·극단 고PER 제외) → peer_avg_pe 276.73→**40.34** 정상화.
+- **성과(000660 deep 가시 한자)**: 258 → **113 (약 56% 제거)**.
+
 **계속할 것 (추후)**:
+- **평가위원 개별 코멘트/분석 프로파일 ko** — `score_fns` gauge 코멘트(我的立场不变/合理区 등) + `analysis_profile`(投票/环境/资金) 라벨. PERSONAS/criteria 코멘트 CJK=0 재검수의 연장(deep 잔여 한자 ~113의 주축).
 - **6_fund_holders 공모펀드 보유** — 무료 API 부재. 에프앤가이드/제로인 유료 연동 시 fund_managers 스키마 충족 가능(현재 graceful skip + DART 대량보유로 일부 보완).
+- **5_chain 밸류체인** — 同花顺(중국) 의존 → K 데이터 부재로 전부 null(graceful). 네이버 산업/사업보고서 기반 K 상하류 추정 보강 여지.
 - **agent_analysis 런타임 CJK 가드** — deep role-play 산출물(agent가 쓴 표기)에 한자 혼용 가능 → 렌더 전 CJK 가드 또는 작업 정의에 CJK=0 명시.
+- **밸류 분위(pe/pb_quantile)·industry_pe null** — K 5년 PER 분위 미산출로 밸류 점수 근거 약함. 네이버 historical PER 기반 분위 산출 보강.
 - **잔여 단일 한자(~80)** — 차트/disclaimer의 조사·단위 단편. 근본은 footer disclaimer 원문 소스(분할 f-string, grep 미포착)를 찾아 K 분기하는 것이나 영향 경미.
 
 ---

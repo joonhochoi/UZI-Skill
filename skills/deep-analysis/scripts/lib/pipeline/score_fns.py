@@ -1129,20 +1129,31 @@ def generate_synthesis(raw: dict, dims_scored: dict, panel: dict, agent_analysis
     rating = (init_cov.get("headline") or {}).get("rating", "")
 
     # Punchline: prefer agent override, fallback to script generation
+    try:
+        from lib.i18n import get_language
+        _ko = (get_language() == "ko")
+    except Exception:
+        _ko = False
+    _cur = "₩" if _ko else "¥"
     agent_punchline = gd_override.get("punchline") or ""
     if agent_punchline:
         punchline = agent_punchline
     elif dcf_sm and lbo_irr and abs(dcf_sm) > 10 and lbo_irr > 15:
         if dcf_sm < 0 and lbo_irr > 20:
-            punchline = f"DCF 说高估 {abs(dcf_sm):.0f}%，但 LBO 测试显示 PE 买方仍能赚 {lbo_irr:.0f}% IRR — 冲突很有意思。"
+            punchline = (f"DCF는 {abs(dcf_sm):.0f}% 고평가로 보지만 LBO 테스트상 PE 매수자는 여전히 {lbo_irr:.0f}% IRR — 흥미로운 충돌." if _ko
+                         else f"DCF 说高估 {abs(dcf_sm):.0f}%，但 LBO 测试显示 PE 买方仍能赚 {lbo_irr:.0f}% IRR — 冲突很有意思。")
         elif dcf_sm > 15 and lbo_irr > 20:
-            punchline = f"DCF 认为低估 {dcf_sm:.0f}%，LBO IRR {lbo_irr:.0f}% 也确认 — 双重信号看多。"
+            punchline = (f"DCF는 {dcf_sm:.0f}% 저평가, LBO IRR {lbo_irr:.0f}%도 확인 — 이중 신호 매수." if _ko
+                         else f"DCF 认为低估 {dcf_sm:.0f}%，LBO IRR {lbo_irr:.0f}% 也确认 — 双重信号看多。")
         else:
-            punchline = f"机构建模定调 {rating}，目标价 ¥{tp}（{upside:+.0f}%），LBO 视角 IRR {lbo_irr:.0f}%。"
+            punchline = (f"기관 모델링 결론 {rating} · 목표가 {_cur}{tp}({upside:+.0f}%) · LBO 관점 IRR {lbo_irr:.0f}%." if _ko
+                         else f"机构建模定调 {rating}，目标价 ¥{tp}（{upside:+.0f}%），LBO 视角 IRR {lbo_irr:.0f}%。")
     elif tp > 0 and abs(upside) > 5:
-        punchline = f"首次覆盖 {rating}，目标价 ¥{tp}，空间 {upside:+.0f}%。"
+        punchline = (f"신규 커버리지 {rating} · 목표가 {_cur}{tp} · 상승여력 {upside:+.0f}%." if _ko
+                     else f"首次覆盖 {rating}，目标价 ¥{tp}，空间 {upside:+.0f}%。")
     else:
-        punchline = f"{name} · ROE 历史与当前估值存在结构性分歧，等待方向明朗。"
+        punchline = (f"{name} · ROE 이력과 현재 밸류에이션 간 구조적 이견 · 방향성 확인 대기." if _ko
+                     else f"{name} · ROE 历史与当前估值存在结构性分歧，等待方向明朗。")
 
     # Risks: prefer agent-written, fallback to script generation from low-scoring dims
     narrative_override = ag.get("narrative_override") or {}
@@ -1157,7 +1168,8 @@ def generate_synthesis(raw: dict, dims_scored: dict, panel: dict, agent_analysis
                 else:
                     # Use dim name as fallback
                     dim_name = dim.get("name") or dim.get("label") or key
-                    risks.append(f"{dim_name} 评分偏低 ({dim['score']}/10)")
+                    risks.append(f"{dim_name} 점수 낮음 ({dim['score']}/10)" if _ko
+                                 else f"{dim_name} 评分偏低 ({dim['score']}/10)")
 
     # If still empty, generate dynamic risks from actual data instead of hardcoded ones
     if not risks:
@@ -1169,18 +1181,23 @@ def generate_synthesis(raw: dict, dims_scored: dict, panel: dict, agent_analysis
             pe_val = _f.get("pe", 0)
             debt_val = _f.get("debt_ratio", 0)
             roe_min = _f.get("roe_5y_min", 0)
-            industry = _f.get("industry", "所属行业")
+            industry = _f.get("industry", "소속 업종" if _ko else "所属行业")
         except Exception:
-            pe_val, debt_val, roe_min, industry = 0, 0, 0, "所属行业"
+            pe_val, debt_val, roe_min = 0, 0, 0
+            industry = "소속 업종" if _ko else "所属行业"
 
         if pe_val > 30:
-            risks.append(f"当前 PE {pe_val:.0f}x，估值偏高")
+            risks.append(f"현재 PER {pe_val:.0f}x · 밸류에이션 부담" if _ko
+                         else f"当前 PE {pe_val:.0f}x，估值偏高")
         if debt_val > 50:
-            risks.append(f"资产负债率 {debt_val:.0f}%，财务杠杆偏高")
+            risks.append(f"부채비율 {debt_val:.0f}% · 재무 레버리지 부담" if _ko
+                         else f"资产负债率 {debt_val:.0f}%，财务杠杆偏高")
         if roe_min < 5:
-            risks.append(f"ROE 最低 {roe_min:.1f}%，盈利稳定性不足")
-        risks.append(f"{industry}行业竞争加剧风险")
-        risks.append("宏观经济或政策环境变化")
+            risks.append(f"ROE 최저 {roe_min:.1f}% · 수익 안정성 부족" if _ko
+                         else f"ROE 最低 {roe_min:.1f}%，盈利稳定性不足")
+        risks.append(f"{industry} 업종 경쟁 심화 리스크" if _ko
+                     else f"{industry}行业竞争加剧风险")
+        risks.append("거시경제·정책 환경 변화" if _ko else "宏观经济或政策环境变化")
 
     risks = risks[:5]
 

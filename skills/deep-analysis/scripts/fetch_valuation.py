@@ -183,7 +183,11 @@ def main(ticker: str) -> dict:
 
     cur_pe = basic.get("pe_ttm")
     iv_total = dcf_result.get("intrinsic_value_total") if isinstance(dcf_result, dict) else None
-    dcf_display = f"¥{iv_total / 1e8:.1f}亿" if iv_total else "—"
+    if ti.market == "K":
+        # 원 단위 → 조원 표시 (₩)
+        dcf_display = f"₩{iv_total / 1e12:,.1f}조" if iv_total else "—"
+    else:
+        dcf_display = f"¥{iv_total / 1e8:.1f}亿" if iv_total else "—"
 
     return {
         "ticker": ti.full,

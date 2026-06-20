@@ -60,7 +60,9 @@ def fetch_sector_lhb(industry: str) -> list[dict]:
 def main(ticker: str) -> dict:
     ti = parse_ticker(ticker)
     if ti.market != "A":
-        return {"ticker": ti.full, "data": {"_note": "lhb only A-share"}, "source": "skip", "fallback": False}
+        _note = ("거래대금 상위 매매주체 공시는 중국 A주 전용 제도 · 한국 시장 미지원"
+                 if ti.market == "K" else "lhb only A-share")
+        return {"ticker": ti.full, "data": {"_note": _note}, "source": "skip", "fallback": False}
 
     lhb = ds.fetch_lhb_recent(ti, days=30)
     matched = match_seats_in_lhb(lhb)

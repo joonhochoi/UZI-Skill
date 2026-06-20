@@ -65,8 +65,10 @@ def main(ticker: str) -> dict:
                         pi = naver_integration(p["code"])
                         p["pe"] = pi.get("pe_ttm")
                         p["pb"] = pi.get("pb")
-                        if pi.get("pe_ttm"):
-                            peer_pes.append(pi["pe_ttm"])
+                        _pe = pi.get("pe_ttm")
+                        # 적자(음수 PER)·극단 고PER(저EPS 종목) 이상치 제외 → 평균 왜곡 방지
+                        if _pe and 0 < _pe <= 150:
+                            peer_pes.append(_pe)
                     except Exception:
                         pass
             # 동종 PER 대표값 (자사 제외) — 이상치(소부장 고PER) 왜곡 방지 위해 중간값

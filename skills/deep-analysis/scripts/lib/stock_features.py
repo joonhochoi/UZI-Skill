@@ -215,7 +215,8 @@ def extract_features(raw: dict, dims: dict) -> dict:
 
     # ─────────────── PEERS ───────────────
     peer_table = peers.get("peer_table") or []
-    peer_pes = [_f(p.get("pe")) for p in peer_table if not p.get("is_self") and _f(p.get("pe")) > 0]
+    # 적자(음수)·극단 고PER(저EPS) 이상치 제외 → peer 평균/비교 왜곡 방지
+    peer_pes = [_f(p.get("pe")) for p in peer_table if not p.get("is_self") and 0 < _f(p.get("pe")) <= 150]
     f["peers_count"] = len(peer_table)
     f["peer_avg_pe"] = sum(peer_pes) / len(peer_pes) if peer_pes else 0
     f["vs_peer_avg_pe"] = (f["pe"] - f["peer_avg_pe"]) / f["peer_avg_pe"] * 100 if f["peer_avg_pe"] > 0 else 0

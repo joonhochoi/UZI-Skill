@@ -366,6 +366,11 @@ def render_panel_insights(syn: dict, panel: dict) -> str:
       1. agent 在 agent_analysis.json 写的 panel_insights (最完整的分析)
       2. 若 agent 没写，用 panel 真实数据聚合生成一段（consensus + 流派倾向）
     """
+    try:
+        from lib.i18n import get_language
+        _ko = (get_language() == "ko")
+    except Exception:
+        _ko = False
     insights = (syn or {}).get("panel_insights") or ""
 
     # 没有 agent 内容也要给摘要，不能让这个位置完全空白（那就是"缺失"）
@@ -385,33 +390,54 @@ def render_panel_insights(syn: dict, panel: dict) -> str:
             g = inv.get("group", "?")
             grp_stance.setdefault(g, Counter())[inv.get("signal", "?")] += 1
         grp_summary = []
-        GROUP_LABELS = {"A": "价值派", "B": "成长派", "C": "宏观派", "D": "技术派",
-                        "E": "中国价投", "F": "A 股游资", "G": "量化",
-                        "H": "科技领袖派", "I": "AI 卡位猎手"}  # v3.8.1 · 补 H/I
+        if _ko:
+            GROUP_LABELS = {"A": "가치파", "B": "성장파", "C": "매크로파", "D": "기술파",
+                            "E": "중국 가치투자", "F": "A주 단타", "G": "퀀트",
+                            "H": "테크 리더파", "I": "AI 길목 헌터"}
+            _TAGM = {"bullish": "매수", "bearish": "매도", "neutral": "중립", "skip": "건너뜀"}
+        else:
+            GROUP_LABELS = {"A": "价值派", "B": "成长派", "C": "宏观派", "D": "技术派",
+                            "E": "中国价投", "F": "A 股游资", "G": "量化",
+                            "H": "科技领袖派", "I": "AI 卡位猎手"}  # v3.8.1 · 补 H/I
+            _TAGM = {"bullish": "看多", "bearish": "看空", "neutral": "中性", "skip": "跳过"}
         for g in sorted(grp_stance.keys()):
             c = grp_stance[g]
             dominant = c.most_common(1)[0] if c else (("—", 0))
             label = GROUP_LABELS.get(g, g)
-            tag = {"bullish": "看多", "bearish": "看空", "neutral": "中性", "skip": "跳过"}.get(
-                dominant[0], dominant[0]
+            tag = _TAGM.get(dominant[0], dominant[0])
+            if _ko:
+                grp_summary.append(f"{label} {c['bullish']}✓ / {c['bearish']}✗(주류 {tag})")
+            else:
+                grp_summary.append(f"{label} {c['bullish']}✓ / {c['bearish']}✗（主流 {tag}）")
+        if _ko:
+            total = bull + neu + bear + skip
+            insights = (
+                f"<strong>{total}명 평가위원 투표 집계</strong>: "
+                f"{bull} 매수 · {neu} 중립 · {bear} 매도 · {skip} 해당 시장 부적합. "
+                f"합의도 <strong>{cons:.0f}%</strong>(중립 반영 가중)."
+                f"<br><br><strong>유파별 분포</strong>: "
+                + "; ".join(grp_summary) + "."
             )
-            grp_summary.append(f"{label} {c['bullish']}✓ / {c['bearish']}✗（主流 {tag}）")
-        insights = (
-            f"<strong>51 位评委投票聚合</strong>："
-            f"{bull} 看多 · {neu} 中性 · {bear} 看空 · {skip} 不适合该市场。"
-            f"共识度 <strong>{cons:.0f}%</strong>（neutral 半权计入）。"
-            f"<br><br><strong>按流派分布</strong>："
-            + "；".join(grp_summary) + "。"
-        )
+        else:
+            insights = (
+                f"<strong>51 位评委投票聚合</strong>："
+                f"{bull} 看多 · {neu} 中性 · {bear} 看空 · {skip} 不适合该市场。"
+                f"共识度 <strong>{cons:.0f}%</strong>（neutral 半权计入）。"
+                f"<br><br><strong>按流派分布</strong>："
+                + "；".join(grp_summary) + "。"
+            )
         if bull == 0 and bear > 10:
-            insights += " <em>⚠️ 无一人看多，压倒性看空——高信念回避信号。</em>"
+            insights += (" <em>⚠️ 매수 의견 전무, 압도적 매도 — 고신념 회피 신호.</em>" if _ko
+                         else " <em>⚠️ 无一人看多，压倒性看空——高信念回避信号。</em>")
         elif bear == 0 and bull > 10:
-            insights += " <em>⚡ 无一人看空，压倒性看多——共识度极高（警惕追高）。</em>"
+            insights += (" <em>⚡ 매도 의견 전무, 압도적 매수 — 합의도 매우 높음(추격 매수 경계).</em>" if _ko
+                         else " <em>⚡ 无一人看空，压倒性看多——共识度极高（警惕追高）。</em>")
         elif abs(bull - bear) < 5 and (bull + bear) > 20:
-            insights += " <em>🌪 多空旗鼓相当——这类分歧票往往波动最大。</em>"
-        tag_src = "（自动聚合 · agent 未介入）"
+            insights += (" <em>🌪 매수·매도 팽팽 — 이런 분쟁 종목은 변동성이 가장 큼.</em>" if _ko
+                         else " <em>🌪 多空旗鼓相当——这类分歧票往往波动最大。</em>")
+        tag_src = ("(자동 집계 · agent 미개입)" if _ko else "（自动聚合 · agent 未介入）")
     else:
-        tag_src = "（agent 深度分析）"
+        tag_src = ("(agent 심층 분석)" if _ko else "（agent 深度分析）")
 
     return (
         f'<div class="panel-insights" style="margin:20px 0;padding:20px;'
