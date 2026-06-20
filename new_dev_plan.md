@@ -436,11 +436,17 @@ medium/deep 점검에서 드러난 "리포트 본문 중국어"(평가위원 대
 - ✅ **5_chain 한국어 라벨** — chain 섹션 제목/필드(밸류체인 상·하류/상류/하류/주요 제품/고객·공급사 집중도) locale. **요구 스키마**: upstream/downstream/products/client_concentration/supplier_concentration/main_business_breakdown(데이터 소스는 DART 사업보고서 "사업의 내용" 또는 네이버 company 개요 — 후속).
 - **성과(000660 deep 가시 한자)**: 게이지 노출분 포함 101 → **67**(단일 한자 단편만 잔존).
 
+**8차 후속 처리 완료 (2026-06-20) — 5_chain DART 사업보고서 연결**:
+- ✅ **DART 사업보고서 'II. 사업의 내용' 파싱** — `kr_data_sources`에 `parse_dart_business`(순수 파서)/`dart_document_main_xml`(document.xml zip→메인 본문)/`dart_latest_business_rcept`(list API 최신 사업보고서)/`dart_business`(통합) 신설. 흐름: corp_code→rcept_no→document.xml(8MB)→주요제품/원재료 표 파싱.
+- ✅ **추출 필드**(SK하이닉스 실측) — products "DRAM, NAND Flash 등", upstream "WAFER, Substrate, PCB"(영문 품목·용도어 Fab/Package/Module 필터), downstream "산업용 전자기기"(구체적 용도), main_business_breakdown "반도체 부문 100%".
+- ✅ **fetch_chain K 분기** — 同花顺(중국) 대신 dart_business 호출. "밸류체인 데이터 부족" → 실제 제품/원재료/매출비중 렌더. 단위 테스트 2 추가(94→96 GREEN).
+- ✅ **chain 라벨 locale** — 类业务已识别/主营 등 잔여 단어 처리. 가시 한자 67→56(단일 한자 단편만).
+
 **계속할 것 (추후)**:
-- **5_chain 데이터 소스 연결** — 스키마는 확정. DART 사업보고서 "사업의 내용"(제품/원재료/매출처/매입처) 또는 네이버 company 개요에서 upstream/downstream/products 추출 구현 필요(현재 _note만, graceful).
 - **industry_pe(업종 PE 평균) null** — K 업종 PE 가중평균 소스 미연결(A주는 cninfo). 네이버 동종 비교/업종 집계로 보강 여지.
+- **5_chain 고객/공급사 집중도** — DART 사업보고서에 매출처/매입처 집중도 표가 있으면 client/supplier_concentration 보강 가능(현재 "—"). 제품/원재료/매출비중은 연결 완료.
 - **agent_analysis 런타임 CJK 가드** — deep role-play 산출물(agent가 쓴 표기)에 한자 혼용 가능 → 렌더 전 CJK 가드 또는 작업 정의에 CJK=0 명시.
-- **잔여 단일 한자(~67)** — 차트/disclaimer의 조사·단위·인명 단편. 매핑 시 오치환 위험으로 보류.
+- **잔여 단일 한자(~56)** — 차트/disclaimer의 조사·단위·인명 단편. 매핑 시 오치환 위험으로 보류.
 
 ---
 

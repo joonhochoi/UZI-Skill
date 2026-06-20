@@ -22,6 +22,29 @@ def main(ticker: str) -> dict:
     breakdown_top: list = []
     ths_zyjs: dict = {}
 
+    if ti.market == "K":
+        # DART 사업보고서 'II. 사업의 내용' → 밸류체인(제품/원재료/매출비중)
+        try:
+            from lib.kr_data_sources import dart_business
+            biz = dart_business(ti.code)
+        except Exception:
+            biz = {}
+        return {
+            "ticker": ti.full,
+            "data": {
+                "main_business_breakdown": biz.get("main_business_breakdown") or [],
+                "products": biz.get("products", "—"),
+                "upstream": biz.get("upstream", "—"),
+                "downstream": biz.get("downstream", "—"),
+                "client_concentration": "—",
+                "supplier_concentration": "—",
+                "_note": ("DART 사업보고서 '사업의 내용' 기반(제품/원재료/매출 비중)"
+                          if biz else "DART 사업보고서 미연결 · 데이터 없음"),
+            },
+            "source": "dart:business_report(사업의 내용)",
+            "fallback": not bool(biz),
+        }
+
     if ti.market == "A":
         # Source A · 同花顺 主营介绍 (bypasses eastmoney push2)
         try:

@@ -804,6 +804,116 @@ def _dart_get(endpoint: str, params: dict) -> dict | None:
         return None
 
 
+# ─── 사업보고서 '사업의 내용' → 밸류체인(5_chain) ───────────────────
+def parse_dart_business(xml: str) -> dict:
+    """DART 사업보고서 본문(document.xml 메인) 'II. 사업의 내용' →
+    products / downstream / main_business_breakdown / upstream.
+
+    주요제품 표(사업부문|매출유형|품목|구체적용도|…|매출액(비율))와
+    원재료 표(…|품목|구체적용도|투입액|비율)를 파싱. 순수 함수(테스트 가능)."""
+    import re as _re
+    out = {"products": "—", "upstream": "—", "downstream": "—",
+           "main_business_breakdown": []}
+    if not xml:
+        return out
+
+    def _tables_after(kw: str, span: int = 15000) -> list:
+        pos = [m.start() for m in _re.finditer(_re.escape(kw), xml)]
+        if not pos:
+            return []
+        seg = xml[pos[-1]:pos[-1] + span]   # 마지막 매치 = 목차가 아닌 본문
+        tbls = []
+        for t in _re.findall(r"<TABLE[\s\S]*?</TABLE>", seg):
+            rows = []
+            for tr in _re.findall(r"<TR[^>]*>([\s\S]*?)</TR>", t):
+                cells = [_re.sub(r"\s+", " ", _re.sub(r"<[^>]+>", " ", td)).strip()
+                         for td in _re.findall(r"<T[DEH][^>]*>([\s\S]*?)</T[DEH]>", tr)]
+                cells = [c for c in cells if c]
+                if cells:
+                    rows.append(cells)
+            if rows:
+                tbls.append(rows)
+        return tbls
+
+    _SKIP = ("합계", "합 계", "소계", "기타", "저장품")
+    # 주요 제품 및 서비스 → products / downstream / breakdown
+    for tbl in _tables_after("주요 제품 및 서비스"):
+        hdr = tbl[0]
+        if not any("품목" in c for c in hdr):
+            continue
+        pi = next((i for i, c in enumerate(hdr) if "품목" in c), None)
+        di = next((i for i, c in enumerate(hdr) if "용도" in c), None)
+        bi = next((i for i, c in enumerate(hdr) if "사업부문" in c), None)
+        vi = next((i for i, c in enumerate(hdr) if "매출액" in c or "비율" in c), None)
+        for row in tbl[1:]:
+            if not row or any(s in row[0] for s in _SKIP):
+                continue
+            if pi is not None and len(row) > pi and out["products"] == "—":
+                out["products"] = row[pi]
+            if di is not None and len(row) > di and out["downstream"] == "—":
+                out["downstream"] = row[di]
+            if bi is not None and vi is not None and len(row) > max(bi, vi):
+                out["main_business_breakdown"].append(f"{row[bi]}: {row[vi]}")
+        break
+    # 원재료 및 생산 → upstream (영문 품목, 용도어 제외)
+    _USE = {"Fab", "Package", "Module", "Assembly", "Test", "Wafer Fab"}
+    ups: list[str] = []
+    for tbl in _tables_after("원재료 및 생산"):
+        if not any("품목" in c for c in tbl[0]):
+            continue
+        for row in tbl[1:]:
+            for c in row:
+                if _re.match(r"^[A-Z][A-Za-z/ ]{1,20}$", c) and c not in ups and c not in _USE:
+                    ups.append(c)
+        break
+    if ups:
+        out["upstream"] = ", ".join(ups[:6])
+    return out
+
+
+def dart_document_main_xml(rcept_no: str) -> str:
+    """document.xml(zip) → 메인 사업보고서 본문 xml (절대 raise 안 함)."""
+    key = _dart_key()
+    if not key or requests is None:
+        return ""
+    try:
+        import zipfile
+        import io as _io
+        r = requests.get(f"{_DART_BASE}/document.xml",
+                         params={"crtfc_key": key, "rcept_no": rcept_no}, timeout=60)
+        z = zipfile.ZipFile(_io.BytesIO(r.content))
+        main = f"{rcept_no}.xml"
+        if main in z.namelist():
+            return z.read(main).decode("utf-8", "ignore")
+    except Exception:
+        pass
+    return ""
+
+
+def dart_latest_business_rcept(corp_code: str) -> str | None:
+    """corp_code → 최신 '사업보고서' rcept_no (정기공시 A)."""
+    j = _dart_get("list.json", {"corp_code": corp_code, "bgn_de": "20230101",
+                                "end_de": "20271231", "pblntf_ty": "A", "page_count": 30})
+    if not isinstance(j, dict):
+        return None
+    for it in (j.get("list") or []):
+        if "사업보고서" in (it.get("report_nm") or ""):
+            return it.get("rcept_no")
+    return None
+
+
+def dart_business(stock_code6: str) -> dict:
+    """6자리 종목코드 → 사업보고서 '사업의 내용' 밸류체인 dict (실패 시 {})."""
+    corp = dart_corp_code(stock_code6)
+    if not corp:
+        return {}
+    rcept = dart_latest_business_rcept(corp)
+    if not rcept:
+        return {}
+    xml = dart_document_main_xml(rcept)
+    return parse_dart_business(xml) if xml else {}
+
+
 def dart_financials(corp_code: str, year: str | int, reprt_code: str = "11011",
                     fs_div: str = "CFS") -> dict:
     raw = _dart_get("fnlttSinglAcntAll.json", {

@@ -137,3 +137,36 @@ def test_parse_corp_code_xml_maps_listed_only():
     assert m["000660"] == "00164779"
     assert " " not in m            # 비상장(빈 stock_code) 제외
     assert len(m) == 2
+
+
+# ─── 사업보고서 '사업의 내용' → 밸류체인(5_chain) ────────────────────
+def test_parse_dart_business():
+    from lib.kr_data_sources import parse_dart_business
+    xml = (
+        "II. 사업의 내용 ... 1. 사업의 개요 ... 2. 주요 제품 및 서비스 "
+        "<TABLE><TR><TD>사업부문</TD><TD>매출유형</TD><TD>품목</TD>"
+        "<TD>구체적용도</TD><TD>주요상표등</TD><TD>매출액(비율)</TD></TR>"
+        "<TR><TD>반도체 부문</TD><TD>제품 외</TD><TD>DRAM, NAND Flash 등</TD>"
+        "<TD>산업용 전자기기</TD><TD>SK하이닉스</TD><TD>97,146,675(100%)</TD></TR>"
+        "<TR><TD>합계</TD><TD>97,146,675(100%)</TD></TR></TABLE>"
+        " ... 3. 원재료 및 생산설비 "
+        "<TABLE><TR><TD>사업부문</TD><TD>매입유형</TD><TD>품목</TD>"
+        "<TD>구체적용도</TD><TD>투입액</TD><TD>비율</TD></TR>"
+        "<TR><TD>반도체</TD><TD>원재료</TD><TD>WAFER</TD><TD>Fab</TD>"
+        "<TD>1,024,285</TD><TD>7%</TD></TR>"
+        "<TR><TD>Substrate</TD><TD>Package</TD><TD>418,856</TD><TD>3%</TD></TR></TABLE>"
+    )
+    r = parse_dart_business(xml)
+    assert r["products"] == "DRAM, NAND Flash 등"
+    assert "산업용 전자기기" in r["downstream"]
+    assert "WAFER" in r["upstream"]
+    assert "Substrate" in r["upstream"]
+    assert "Fab" not in r["upstream"]          # 용도어 제외
+    assert "Package" not in r["upstream"]
+    assert any("반도체" in b for b in r["main_business_breakdown"])
+
+
+def test_parse_dart_business_empty_safe():
+    from lib.kr_data_sources import parse_dart_business
+    out = parse_dart_business("")
+    assert out["products"] == "—" and out["main_business_breakdown"] == []
