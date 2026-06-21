@@ -69,6 +69,39 @@ def test_get_json_returns_none_on_non_200(monkeypatch):
     assert kr._get_json("https://x") is None
 
 
+# ─── naver_industry_pe · 동종 PER 중간값(업종 PE 대용) ──────────────────
+def test_naver_industry_pe_median_filters_outliers(monkeypatch):
+    """동종 PER 수집 후 적자/극단 고PER 제외하고 중간값 산출."""
+    import lib.kr_data_sources as kr
+
+    def fake_integration(code6):
+        if code6 == "000660":   # self → 동종 목록
+            return {"industry_compare": [
+                {"code": "005930"}, {"code": "042700"},
+                {"code": "000990"}, {"code": "999999"},
+                {"code": "000660"},   # 자기 자신은 제외돼야 함
+            ]}
+        table = {
+            "005930": 28.0, "042700": 15.0, "000990": 40.0,
+            "999999": 9999.0,   # 극단 고PER → 제외(>150)
+            "000660": 26.7,
+        }
+        return {"pe_ttm": table.get(code6)}
+
+    monkeypatch.setattr(kr, "naver_integration", fake_integration)
+    out = kr.naver_industry_pe("000660")
+    # 수집 대상 28/15/40 (9999 제외, self 제외) → median 28, count 3
+    assert out["peer_count"] == 3
+    assert out["industry_pe_median"] == 28.0
+    assert out["industry_pe_avg"] == round((28.0 + 15.0 + 40.0) / 3, 2)
+
+
+def test_naver_industry_pe_empty_when_no_peers(monkeypatch):
+    import lib.kr_data_sources as kr
+    monkeypatch.setattr(kr, "naver_integration", lambda c: {"industry_compare": []})
+    assert kr.naver_industry_pe("000660") == {}
+
+
 # ─── parse_integration → 0_basic + 10_valuation + cns + deal_trend ──
 def test_parse_integration_core_fields():
     from lib.kr_data_sources import parse_integration

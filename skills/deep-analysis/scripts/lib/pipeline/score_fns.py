@@ -571,9 +571,15 @@ def _auto_summarize_dim(dim_key: str, label: str, dim: dict, score: float) -> st
     "[占位]" type strings — either real content or empty."""
     if not isinstance(dim, dict):
         return ""
+    try:
+        from lib.i18n import get_language
+        _ko = (get_language() == "ko")
+    except Exception:
+        _ko = False
     data = dim.get("data") or {}
     if not data:
-        return f"{label}：未拉取到数据（fetcher 失败或返回空）。"
+        return (f"{label}: 데이터 미수집(fetcher 실패 또는 빈 응답)。" if _ko
+                else f"{label}：未拉取到数据（fetcher 失败或返回空）。")
 
     def _v(*keys, default="—"):
         for k in keys:
@@ -624,6 +630,9 @@ def _auto_summarize_dim(dim_key: str, label: str, dim: dict, score: float) -> st
         return f"{label}：{ind} 行业，{rank}{('，主要同行：' + peers_str) if peers_str else ''}。得分 {score}/10。"
 
     if dim_key == "5_chain":
+        if _ko:
+            return (f"{label}: 상류 {_v('upstream')} · 하류 {_v('downstream')} · "
+                    f"고객 집중도 {_v('client_concentration')} · 공급사 {_v('supplier_concentration')}.")
         return f"{label}：上游 {_v('upstream')}；下游 {_v('downstream')}；客户集中度 {_v('client_concentration')}。"
 
     if dim_key == "6_research":

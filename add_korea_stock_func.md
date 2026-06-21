@@ -126,7 +126,10 @@ else: ...접미사 fallback
 - **받는 값**: 주요제품 표(사업부문|매출유형|품목|구체적용도|매출액(비율)), 원재료 표(…|품목|구체적용도|투입액|비율)
 - **가공**: `parse_dart_business` — 본문(목차 아닌 마지막 매치) 슬라이스 후 `<TABLE>/<TR>/<TD>` 파싱. products=품목, downstream=구체적용도, main_business_breakdown=사업부문:매출액(비율), upstream=원재료 영문 품목(용도어 Fab/Package/Module 제외)
 - **결과 필드(SK하이닉스 실측)**: products="DRAM, NAND Flash 등", upstream="WAFER, Substrate, PCB", downstream="산업용 전자기기", main_business_breakdown=["반도체 부문: 97,146,675(100%)"]
-- **미구현**: client/supplier_concentration("—", 매출처/매입처 집중도 표 후속)
+- **고객/공급사 집중도 [Phase9, 2026-06-21]**: 같은 사업보고서 본문에서 추가 추출.
+  - `_dart_client_concentration` — IFRS 8 '주요 고객에 대한 정보' "전체 매출액의 N%를 상회하는 고객 (가)로부터 발생한 매출액은 X백만원"(당기절만, 전기 제외) → 백만원→조원 환산 → `client_concentration`="10% 초과 단일 고객 1곳: 가 ₩23.3조"
+  - `_dart_supplier_concentration` — '주요 원재료의 매입처' 서술 첫 문장(헤더 제외) → `supplier_concentration`="당사는 일본, 한국, 독일, 미국 등 주요 공급사로부터 300mm 웨이퍼…"
+  - 렌더: `dim_viz._viz_chain`(deep)·`score_fns._auto_summarize_dim`(commentary) ko 분기, `ChainRenderer` 라벨 locale_ko 후처리
 
 ### 6_research — 증권사 리서치
 - **원래**: akshare 증권사 리포트/평점
@@ -163,7 +166,7 @@ else: ...접미사 fallback
 - **받는 값**: 현재 PER_ttm/PBR, PER/PBR 연·분기 시계열(양수만)
 - **가공**: ① 분위 — `현재값 < 시계열` 비율 백분위(SK PER 26.7→89분위·고평가) · ② 라벨 "최근 PER N분위"(中 "5 年 N 分位" → K) · ③ DCF — WACC 8.5%·터미널 2.0%(A주 10%/3%와 다름), 표시 `₩…조`(中 `¥…亿` → K)
 - **결과 필드**: pe, pe_quantile("최근 PER N분위"), pb_quantile, dcf("₩864.7조"), dcf_simple, dcf_sensitivity
-- **미연결**: industry_pe(업종 PE 평균, A주는 cninfo)
+- **industry_pe(업종 PE 평균) [Phase9, 2026-06-21]**: cninfo(A주 전용) 대신 네이버 `industryCompareInfo`(동종) PER 중간값. `naver_industry_pe(code6)` — 동종 `integration` 루프로 pe_ttm 수집(0<pe≤150 이상치 필터) → 중간값/평균. `fetch_valuation` K 가 호출 → `industry_pe`=38.56(SK하이닉스). 리포트 "업종평균 38.56" 렌더. (차원 7 가중 PE 는 fetcher 시그니처 한계로 미연결 — 후순위)
 
 ### 11_governance — 지배구조 [DART]
 - **원래**: akshare 거버넌스(최대주주/임원/질권)
@@ -282,7 +285,7 @@ else: ...접미사 fallback
 
 ## 7. 테스트 (tests/, hermes pytest 또는 bash python 3.14)
 
-- `tests/test_kr_*.py` — market_router, env_loader, naver 파서, DART 파서, dim 변환, features, investor, locale, **parse_pe_pb_series**(밸류 분위), **parse_dart_business**(5_chain)
+- `tests/test_kr_*.py` — market_router, env_loader, naver 파서, DART 파서, dim 변환, features, investor, locale, **parse_pe_pb_series**(밸류 분위), **parse_dart_business**(5_chain), **naver_industry_pe**(업종 PE 중간값), **_dart_client/supplier_concentration**(고객/공급사 집중도)
 - `tests/fixtures/kr/` — 실제 네이버/DART 응답 JSON(네트워크 의존 제거). DART 키는 fixture에 절대 미포함
 - **환경 주의**: hermes venv(3.11)는 akshare/pandas 없음 → akshare import하는 fetch_* 테스트는 baseline 실패(내 변경 무관). `institutional.py`는 3.11 f-string 비호환. 순수 파서/locale 테스트는 GREEN
 - **RTK 프록시 주의**: 한국어 mojibake로 pytest 출력이 "No tests collected"로 깨짐 → hermes `pytest.exe` 직접 실행
@@ -305,8 +308,8 @@ python run.py 삼성전자 ...                            # 한글명 → naver_
 
 | 항목 | 상태 |
 |---|---|
-| industry_pe(업종 PE 평균) | K 소스 미연결(A주는 cninfo). 네이버 동종/업종 집계로 보강 여지 |
-| 5_chain 고객/공급사 집중도 | DART 매출처/매입처 집중도 표 파싱 후속(제품/원재료/매출비중은 완료) |
+| ~~industry_pe(업종 PE 평균)~~ | ✅ Phase9 — 네이버 동종(industryCompareInfo) PER 중간값으로 연결(`naver_industry_pe`). 차원 7 가중 PE만 cninfo(A) 잔존 |
+| ~~5_chain 고객/공급사 집중도~~ | ✅ Phase9 — DART 사업보고서 IFRS 8 주요 고객(정량)·매입처 서술(정성) 파싱 연결 |
 | 6_fund_holders 실데이터 | 에프앤가이드/제로인 유료 연동 시 가능(현재 graceful) |
 | 밸류 분위 정밀도 | 네이버 finance는 연·분기 ~10포인트(일별 5년 밴드 아님). 근사 |
 | agent_analysis 런타임 CJK 가드 | deep role-play 산출물 한자 혼용 가능 → 렌더 전 가드 미적용 |

@@ -49,17 +49,25 @@ def _score_class(score: int) -> str:
 ## ─── 维度专属可视化 dispatch ───
 
 def _viz_chain(raw: dict) -> str:
+    try:
+        from lib.i18n import get_language
+        _ko = (get_language() == "ko")
+    except Exception:
+        _ko = False
     upstream = raw.get("upstream", "—")
     downstream = raw.get("downstream", "—")
     client_conc = raw.get("client_concentration", "")
     supplier_conc = raw.get("supplier_concentration", "")
-    flow = svg_supply_flow(upstream, "本公司", downstream)
+    _self_label = "당사" if _ko else "本公司"
+    flow = svg_supply_flow(upstream, _self_label, downstream)
 
+    _sup_label = "공급사" if _ko else "供应商"
+    _cli_label = "주요 고객" if _ko else "大客户"
     extras = ""
-    if client_conc or supplier_conc:
+    if (client_conc and client_conc != "—") or (supplier_conc and supplier_conc != "—"):
         extras = f'''<div style="display:flex;justify-content:space-around;margin-top:10px;padding:10px;background:#ffffff;border:1px solid #e2e8f0;border-radius:6px;font-family:Fira Code;font-size:11px;color:#475569">
-  <span>🔧 供应商 <strong style="color:#0f172a">{supplier_conc}</strong></span>
-  <span>🎯 大客户 <strong style="color:#0f172a">{client_conc}</strong></span>
+  <span>🔧 {_sup_label} <strong style="color:#0f172a">{supplier_conc}</strong></span>
+  <span>🎯 {_cli_label} <strong style="color:#0f172a">{client_conc}</strong></span>
 </div>'''
 
     # 主营业务构成 pie
@@ -73,9 +81,11 @@ def _viz_chain(raw: dict) -> str:
             value = item.get("value", 0)
             segments.append((name, value, COLORS[i % len(COLORS)]))
         if segments:
+            _pie_title = "🥧 주요 사업 구성" if _ko else "🥧 主营业务构成"
+            _pie_center = "주력" if _ko else "主营"
             pie = '<div style="margin-top:12px;padding-top:10px;border-top:1px solid #e2e8f0">'
-            pie += '<div style="font-family:Fira Code;font-size:10px;color:#64748b;margin-bottom:8px">🥧 主营业务构成</div>'
-            pie += svg_donut(segments, label="主营")
+            pie += f'<div style="font-family:Fira Code;font-size:10px;color:#64748b;margin-bottom:8px">{_pie_title}</div>'
+            pie += svg_donut(segments, label=_pie_center)
             pie += '</div>'
 
     return flow + extras + pie

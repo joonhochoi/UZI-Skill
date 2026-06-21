@@ -492,6 +492,36 @@ def naver_integration(code6: str) -> dict:
     return parse_integration(raw) if raw else {}
 
 
+def naver_industry_pe(code6: str, max_peers: int = 8) -> dict:
+    """동종(industryCompareInfo) 종목 PER 의 중간값/평균 → '업종 PE 평균' 대용.
+
+    integration 1회로 동종 목록을 얻고 각 동종 integration 의 pe_ttm 을 수집.
+    적자(음수)·극단 고PER(소부장 이상치) 제외(0<pe<=150) 후 중간값(robust)/평균.
+    네이버에 한국 업종 PE 집계 API 가 없어 cninfo(A주 전용) 대신 동종 비교로 산출.
+    절대 raise 안 함 — 실패 시 빈 dict."""
+    inte = naver_integration(code6)
+    peers = inte.get("industry_compare") or []
+    pes: list[float] = []
+    for p in peers[:max_peers]:
+        c = (p or {}).get("code")
+        if not c or c == code6:
+            continue
+        try:
+            pe = naver_integration(c).get("pe_ttm")
+        except Exception:
+            pe = None
+        if pe and 0 < pe <= 150:
+            pes.append(pe)
+    if not pes:
+        return {}
+    import statistics
+    return {
+        "industry_pe_median": round(statistics.median(pes), 2),
+        "industry_pe_avg": round(sum(pes) / len(pes), 2),
+        "peer_count": len(pes),
+    }
+
+
 def naver_basic(code6: str) -> dict:
     raw = _get_json(f"{_BASE_M}/{code6}/basic")
     return parse_basic(raw) if raw else {}
@@ -805,17 +835,69 @@ def _dart_get(endpoint: str, params: dict) -> dict | None:
 
 
 # ─── 사업보고서 '사업의 내용' → 밸류체인(5_chain) ───────────────────
+def _dart_window_text(xml: str, kws, before: int = 30, after: int = 600) -> str:
+    """xml 에서 키워드 첫 등장 윈도를 잘라 태그 제거한 평문 반환 (집중도 추출용)."""
+    import re as _re
+    for kw in kws:
+        i = xml.find(kw)
+        if i >= 0:
+            seg = xml[max(0, i - before): i + after]
+            return _re.sub(r"\s+", " ", _re.sub(r"<[^>]+>", " ", seg)).strip()
+    return ""
+
+
+def _dart_client_concentration(xml: str) -> str:
+    """IFRS 8 '주요 고객에 대한 정보' → 단일 10%+ 고객 매출 집중도 (정량).
+
+    예: '단일 외부고객 ... 전체 매출액의 10%를 상회하는 고객 (가)로부터
+    발생한 매출액은 23,260,076백만원' → '10%+ 단일 고객 1곳: 가 ₩23.3조'."""
+    import re as _re
+    t = _dart_window_text(xml, ["단일 외부고객", "주요 고객에 대한 정보"], after=700)
+    if not t:
+        return "—"
+    cur = t.split("전기")[0]   # 당기 절만 (전기/비교기 금액 제외)
+    thr = _re.search(r"전체\s*매출액의\s*(\d{1,2})\s*%", cur)
+    pairs = _re.findall(r"고객\s*\(([가-힣]+)\)[^0-9]{0,30}?([\d,]+)\s*백만원", cur)
+    if not pairs:
+        return "—"
+    parts = []
+    for label, amt in pairs:
+        eok = int(amt.replace(",", "")) / 100      # 백만원 → 억원
+        jo = eok / 10000
+        disp = f"₩{jo:.1f}조" if jo >= 1 else f"₩{eok:,.0f}억"
+        parts.append(f"{label} {disp}")
+    pct = thr.group(1) if thr else "10"
+    return f"{pct}% 초과 단일 고객 {len(pairs)}곳: " + ", ".join(parts)
+
+
+def _dart_supplier_concentration(xml: str) -> str:
+    """'주요 원재료의 매입처' 서술 → 공급처 다변화/집중 요약 (정성)."""
+    import re as _re
+    t = _dart_window_text(xml, ["주요 원재료의 매입처", "주요 매입처", "원재료의 매입처"],
+                          before=0, after=260)
+    if not t:
+        return "—"
+    # 헤더('… 공급의 안정성') 뒤 본문부터 — '당사는' 기준으로 시작
+    m = _re.search(r"당사는.*?(?:있습니다|받고\s*있습니다)\.", t)
+    body = m.group(0) if m else t
+    return body[:140].strip()
+
+
 def parse_dart_business(xml: str) -> dict:
     """DART 사업보고서 본문(document.xml 메인) 'II. 사업의 내용' →
-    products / downstream / main_business_breakdown / upstream.
+    products / downstream / main_business_breakdown / upstream
+    + client_concentration / supplier_concentration.
 
     주요제품 표(사업부문|매출유형|품목|구체적용도|…|매출액(비율))와
     원재료 표(…|품목|구체적용도|투입액|비율)를 파싱. 순수 함수(테스트 가능)."""
     import re as _re
     out = {"products": "—", "upstream": "—", "downstream": "—",
-           "main_business_breakdown": []}
+           "main_business_breakdown": [],
+           "client_concentration": "—", "supplier_concentration": "—"}
     if not xml:
         return out
+    out["client_concentration"] = _dart_client_concentration(xml)
+    out["supplier_concentration"] = _dart_supplier_concentration(xml)
 
     def _tables_after(kw: str, span: int = 15000) -> list:
         pos = [m.start() for m in _re.finditer(_re.escape(kw), xml)]

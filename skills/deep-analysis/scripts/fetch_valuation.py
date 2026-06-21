@@ -91,6 +91,14 @@ def main(ticker: str) -> dict:
                     pb_quantile_val = sum(1 for x in pbs if x < cur_pb) / len(pbs) * 100
         except Exception:
             pass
+        # 업종 PE 평균 — cninfo(A주 전용) 대신 네이버 동종(industryCompareInfo) PER 중간값
+        try:
+            from lib.kr_data_sources import naver_industry_pe
+            _ind = naver_industry_pe(ti.code)
+            if _ind.get("industry_pe_median"):
+                industry_pe_avg = _ind["industry_pe_median"]
+        except Exception:
+            pass
 
     if ti.market == "A":
         # 1. PE 5 年历史序列 via 百度股市通 (stock_zh_valuation_baidu)

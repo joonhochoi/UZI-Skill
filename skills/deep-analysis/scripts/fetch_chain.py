@@ -36,9 +36,9 @@ def main(ticker: str) -> dict:
                 "products": biz.get("products", "—"),
                 "upstream": biz.get("upstream", "—"),
                 "downstream": biz.get("downstream", "—"),
-                "client_concentration": "—",
-                "supplier_concentration": "—",
-                "_note": ("DART 사업보고서 '사업의 내용' 기반(제품/원재료/매출 비중)"
+                "client_concentration": biz.get("client_concentration", "—"),
+                "supplier_concentration": biz.get("supplier_concentration", "—"),
+                "_note": ("DART 사업보고서 '사업의 내용' 기반(제품/원재료/매출 비중 · 10%+ 단일고객 집중도)"
                           if biz else "DART 사업보고서 미연결 · 데이터 없음"),
             },
             "source": "dart:business_report(사업의 내용)",

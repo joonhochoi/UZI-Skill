@@ -442,9 +442,17 @@ medium/deep 점검에서 드러난 "리포트 본문 중국어"(평가위원 대
 - ✅ **fetch_chain K 분기** — 同花顺(중국) 대신 dart_business 호출. "밸류체인 데이터 부족" → 실제 제품/원재료/매출비중 렌더. 단위 테스트 2 추가(94→96 GREEN).
 - ✅ **chain 라벨 locale** — 类业务已识别/主营 등 잔여 단어 처리. 가시 한자 67→56(단일 한자 단편만).
 
+**9차 후속 처리 완료 (2026-06-21) — industry_pe 연결 + 5_chain 고객/공급사 집중도**:
+- ✅ **industry_pe(업종 PE 평균) 연결** — cninfo(A주 전용) 대신 네이버 `industryCompareInfo`(동종) PER 중간값. `kr_data_sources.naver_industry_pe(code6)` 신설(동종 integration 루프 · 0<pe≤150 이상치 필터 · 중간값/평균/peer_count). `fetch_valuation` K 분기에서 호출 → `10_valuation.industry_pe` 채움(SK하이닉스 검증: **38.56**, 이전 None/"—"). 리포트 "PER 26.7 · 89분위 · 업종평균 **38.56**" 정상 렌더(`score_dimensions` `_val_label` 이미 ko). `stock_features.pe_vs_industry` 도 동작. 단위 테스트 2.
+- ✅ **5_chain 고객/공급사 집중도 연결** — DART 사업보고서 'II. 사업의 내용' 본문에서 추출:
+  - **고객 집중도(정량)**: IFRS 8 '주요 고객에 대한 정보' → `_dart_client_concentration`. "전체 매출액의 10%를 상회하는 고객 (가)로부터 발생한 매출액은 23,260,076백만원"(당기만, 전기 제외) → 백만원→조원 환산 → "**10% 초과 단일 고객 1곳: 가 ₩23.3조**".
+  - **공급사 집중도(정성)**: '주요 원재료의 매입처' 서술 → `_dart_supplier_concentration`. "당사는 일본, 한국, 독일, 미국 등 주요 공급사로부터 300mm 웨이퍼 공급…"(헤더 제외 첫 문장).
+  - `parse_dart_business` 가 두 필드 추가 반환 → `dart_business` → `fetch_chain` K 분기가 하드코딩 "—" 대신 실제 값 패스. `_note` 에 "10%+ 단일고객 집중도" 명기. 단위 테스트 4.
+- ✅ **chain 렌더 ko 분기** — 집중도가 실제 값으로 채워지며 노출되는 `dim_viz._viz_chain`(供应商/大客户/本公司/主营业务构成/主营 → 공급사/주요 고객/당사/주요 사업 구성/주력) + `score_fns._auto_summarize_dim` 5_chain commentary("상류 … · 하류 … · 고객 집중도 … · 공급사 …") + 빈데이터 메시지 ko 분기. pipeline `ChainRenderer` 정적 라벨은 locale_ko 후처리로 커버. CJK=0 검증(供应商/大客户/本公司/主营 잔존 0).
+- **검증**: K 단위 테스트 49→55 GREEN(dart +4, naver +2). medium E2E(000660 `--no-resume`): raw_data `client_concentration`/`supplier_concentration`/`industry_pe 38.56` 채워짐, deep `_viz_chain` 카드 한글 렌더 확인. ⚠️ run.py 기본 **resume 모드**가 옛 raw_data 재사용하므로 재검증 시 `--no-resume` 필수.
+
 **계속할 것 (추후)**:
-- **industry_pe(업종 PE 평균) null** — K 업종 PE 가중평균 소스 미연결(A주는 cninfo). 네이버 동종 비교/업종 집계로 보강 여지.
-- **5_chain 고객/공급사 집중도** — DART 사업보고서에 매출처/매입처 집중도 표가 있으면 client/supplier_concentration 보강 가능(현재 "—"). 제품/원재료/매출비중은 연결 완료.
+- **7_industry industry_pe_weighted** — 차원 7의 가중 PE 는 여전히 cninfo(A주 전용). `fetch_industry.main(industry명)` 은 ticker 를 받지 않아 K 동종 PE 연결 불가 구조 → 차원 10(valuation)의 industry_pe 로 대체 충족. 차원 7 자체 보강은 fetcher 시그니처 변경 필요(후순위).
 - **agent_analysis 런타임 CJK 가드** — deep role-play 산출물(agent가 쓴 표기)에 한자 혼용 가능 → 렌더 전 CJK 가드 또는 작업 정의에 CJK=0 명시.
 - **잔여 단일 한자(~56)** — 차트/disclaimer의 조사·단위·인명 단편. 매핑 시 오치환 위험으로 보류.
 

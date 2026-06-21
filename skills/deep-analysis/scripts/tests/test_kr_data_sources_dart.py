@@ -170,3 +170,53 @@ def test_parse_dart_business_empty_safe():
     from lib.kr_data_sources import parse_dart_business
     out = parse_dart_business("")
     assert out["products"] == "—" and out["main_business_breakdown"] == []
+    assert out["client_concentration"] == "—"
+    assert out["supplier_concentration"] == "—"
+
+
+# ─── 5_chain 고객/공급사 집중도 (IFRS 8 주요 고객 + 매입처 서술) ─────────
+def test_dart_client_concentration_quantified():
+    """IFRS 8 '10%+ 단일 고객' 공시 → 당기 금액만 백만원→조원 환산."""
+    from lib.kr_data_sources import _dart_client_concentration
+    xml = (
+        "주요 고객에 대한 정보 당기 중 단일 외부고객으로부터의 매출액이 "
+        "연결회사 전체 매출액의 10%를 상회하는 고객 (가)로부터 발생한 매출액은 "
+        "23,260,076백만원이며, 전기 중 단일 외부고객으로부터의 매출액이 연결회사 "
+        "전체 매출액의 10%를 상회하는 고객 (가)로부터 발생한 매출액은 10,902,817백만원입니다."
+    )
+    out = _dart_client_concentration(xml)
+    assert "10%" in out
+    assert "가" in out
+    assert "₩23.3조" in out          # 23,260,076 백만원 → 23.26조 (당기)
+    assert "10,902,817" not in out   # 전기 금액은 제외
+
+
+def test_dart_client_concentration_none_when_absent():
+    from lib.kr_data_sources import _dart_client_concentration
+    assert _dart_client_concentration("아무 관련 없는 본문 텍스트") == "—"
+
+
+def test_dart_supplier_concentration_descriptive():
+    from lib.kr_data_sources import _dart_supplier_concentration
+    xml = (
+        "주요 원재료의 매입처 및 원재료 공급시장과 공급의 안정성 "
+        "당사는 일본, 한국, 독일, 미국 등에 생산시설을 보유한 업계의 주요 공급사로부터 "
+        "반도체 공정의 원자재인 300mm 웨이퍼 완제품을 공급받고 있습니다. 웨이퍼 가격은 ..."
+    )
+    out = _dart_supplier_concentration(xml)
+    assert "당사는" in out
+    assert "공급사" in out
+    assert "..." not in out          # 헤더/꼬리 잡설 제외, 첫 문장만
+
+
+def test_parse_dart_business_includes_concentration():
+    from lib.kr_data_sources import parse_dart_business
+    xml = (
+        "II. 사업의 내용 "
+        "주요 고객에 대한 정보 당기 중 단일 외부고객으로부터의 매출액이 전체 매출액의 "
+        "10%를 상회하는 고객 (가)로부터 발생한 매출액은 23,260,076백만원입니다. "
+        "나. 주요 원재료의 매입처 당사는 한국, 일본 공급사로부터 웨이퍼를 공급받고 있습니다."
+    )
+    r = parse_dart_business(xml)
+    assert "가" in r["client_concentration"]
+    assert "공급사" in r["supplier_concentration"]
