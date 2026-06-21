@@ -451,10 +451,19 @@ medium/deep 점검에서 드러난 "리포트 본문 중국어"(평가위원 대
 - ✅ **chain 렌더 ko 분기** — 집중도가 실제 값으로 채워지며 노출되는 `dim_viz._viz_chain`(供应商/大客户/本公司/主营业务构成/主营 → 공급사/주요 고객/당사/주요 사업 구성/주력) + `score_fns._auto_summarize_dim` 5_chain commentary("상류 … · 하류 … · 고객 집중도 … · 공급사 …") + 빈데이터 메시지 ko 분기. pipeline `ChainRenderer` 정적 라벨은 locale_ko 후처리로 커버. CJK=0 검증(供应商/大客户/本公司/主营 잔존 0).
 - **검증**: K 단위 테스트 49→55 GREEN(dart +4, naver +2). medium E2E(000660 `--no-resume`): raw_data `client_concentration`/`supplier_concentration`/`industry_pe 38.56` 채워짐, deep `_viz_chain` 카드 한글 렌더 확인. ⚠️ run.py 기본 **resume 모드**가 옛 raw_data 재사용하므로 재검증 시 `--no-resume` 필수.
 
+**10차 후속 처리 완료 (2026-06-21) — 잔여 한자 마감 + CJK 가드**:
+- ✅ **disclaimer 통째 한국어화** — locale_ko disclaimer 키가 한글 혼입으로 dead 상태였음(실제 `report-template.html` L3105-3107 raw 중국어와 불일치) → 정확한 원문 3문장으로 키 교체, 길이-desc 정렬상 단편보다 먼저 통째 치환.
+- ✅ **DIM 카드 제목 11개 + 섹션 헤더 3개 전체 매핑** — 부분번역 잔재(财报扎实度/上下游产业链/管理层与治理/政策与监管/护城河 (5 类)/事件驱动/舆情与大V/机构级估值建模/四派系买入区间/行业面 등)를 locale 전체 문자열로.
+- ✅ **단위 카운터 정규식 일원화** — `_localize_unit_counters`(分→점·人→명·次→회·位→명·条/份→건·家→곳·个→개·类→종·日→일·名→명). `(\d)\s*X(?![一-鿿])`로 **스페이스 유무·다자릿수·합성어(分析/人民/分钟) 회피** 모두 처리. 기존 무차별 `0分~100分`(101개) 항목 제거(합성어 오변환 버그 동시 해결·사전 슬림).
+- ✅ **score_fns 소스 ko 분기** — verdict_label(8단계)·`派看多/派看空`·verdict_detail·core_conclusion("X점 · 거장 51인 중 N인 매수 우위")·6/7/8/9 차원 label("리포트 N건"/"업종 성장기 진입"/"원자재 원가 주목"/"강하게 연관된 선물 없음")·`_auto_summarize_dim` 빈데이터 메시지. (medium 차원 commentary는 synthesis 경유.)
+- ✅ **agent_analysis 런타임 CJK 가드** — `agent_analysis_validator.cjk_audit`(재귀 한자 카운트+경로) 신설, `run_real_test` stage2에서 K(ko)일 때 호출 → 혼용 감지 시 경고 + `_agent_analysis_cjk.json` 기록(자동수정 아님 · agent 재작성 유도). 단위 테스트 3.
+- **성과(000660 medium 가시 한자)**: **65 → 2**. 남은 2는 정당 — `美`(네이버 뉴스 헤드라인 "美 반도체…", 한국 언론의 미국 약칭) + `净`(collapsed `<details>` raw-data 디버그 덤프가 "主力净流入"을 truncate한 1자 · 비프로즈 · 공유 스키마).
+- **검증**: K 단위 테스트(locale 15 + cjk 3 + dart/naver 49 등) GREEN. ⚠️ run.py 기본 resume 모드 주의 → 재검증 시 `--no-resume`.
+
 **계속할 것 (추후)**:
 - **7_industry industry_pe_weighted** — 차원 7의 가중 PE 는 여전히 cninfo(A주 전용). `fetch_industry.main(industry명)` 은 ticker 를 받지 않아 K 동종 PE 연결 불가 구조 → 차원 10(valuation)의 industry_pe 로 대체 충족. 차원 7 자체 보강은 fetcher 시그니처 변경 필요(후순위).
-- **agent_analysis 런타임 CJK 가드** — deep role-play 산출물(agent가 쓴 표기)에 한자 혼용 가능 → 렌더 전 CJK 가드 또는 작업 정의에 CJK=0 명시.
-- **잔여 단일 한자(~56)** — 차트/disclaimer의 조사·단위·인명 단편. 매핑 시 오치환 위험으로 보류.
+- **deep 경로 가시 한자 재측정** — 10차 소스 ko 분기/locale 보강은 deep 에도 적용되나 deep E2E(sonnet subagent)는 미재실행. CJK 가드가 agent 산출물 혼용을 런타임 감지하므로 다음 deep 실행 시 확인.
+- **raw-data 디버그 덤프 한자** — `<details><pre>` 의 raw_data JSON(主力净流入 등 중국어 필드키)은 공유 스키마라 보류(디버그 뷰어 · 비프로즈).
 
 ---
 

@@ -675,6 +675,25 @@ def stage2(ticker: str) -> str:
         except Exception as _ve:
             print(f"   ⚠️ schema 校验跳过: {_ve}")
 
+        # K(한국어) 전용 · agent 산출물 한자 혼용 가드(감지·경고만, 자동수정 아님)
+        try:
+            from lib.i18n import get_language as _gl
+            if _gl() == "ko":
+                from lib.agent_analysis_validator import cjk_audit as _cjk
+                _n, _hits = _cjk(agent_analysis)
+                if _n > 0:
+                    print(f"\n   ⚠️ [CJK 가드] agent_analysis 한국어 산출물에 한자 {_n}자 혼용 감지")
+                    for _h in _hits[:5]:
+                        print(f"      · {_h['path']} ({_h['count']}자): {_h['sample']}")
+                    from pathlib import Path as _P
+                    _cp = _P(".cache") / ti.full / "_agent_analysis_cjk.json"
+                    _cp.parent.mkdir(parents=True, exist_ok=True)
+                    _cp.write_text(__import__("json").dumps(
+                        {"total_han": _n, "hits": _hits}, ensure_ascii=False, indent=2), encoding="utf-8")
+                    print(f"      → 상세 {_cp} · agent 는 해당 필드를 한국어로 재작성 권장(CJK=0)")
+        except Exception:
+            pass
+
     if agent_analysis and agent_analysis.get("agent_reviewed"):
         print(f"\n🧠 Agent 分析已加载 · agent_analysis.json")
         ag_dc = agent_analysis.get("dim_commentary") or {}

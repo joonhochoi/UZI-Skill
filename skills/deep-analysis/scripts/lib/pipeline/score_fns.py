@@ -149,18 +149,19 @@ def score_dimensions(raw: dict) -> dict:
     if buy_count >= 10: score_6 += 1
     score_6 = min(10, score_6)
     out["6_research"] = {"score": score_6, "weight": 3,
-                         "label": f"{coverage} 份研报 · 买入/增持 {buy_count} 份" if coverage else "研报数据稀少",
-                         "reasons_pass": [f"覆盖券商 {coverage} 家"] if coverage >= 10 else [],
-                         "reasons_fail": [] if coverage else ["缺乏覆盖"]}
+                         "label": ((f"리포트 {coverage}건 · 매수/비중확대 {buy_count}건" if coverage else "리서치 데이터 희소") if _ko
+                                   else (f"{coverage} 份研报 · 买入/增持 {buy_count} 份" if coverage else "研报数据稀少")),
+                         "reasons_pass": ([f"커버 증권사 {coverage}곳"] if _ko else [f"覆盖券商 {coverage} 家"]) if coverage >= 10 else [],
+                         "reasons_fail": [] if coverage else (["커버리지 부족"] if _ko else ["缺乏覆盖"])}
 
     # 7 · 行业景气 (stub heavy qualitative)
-    out["7_industry"] = {"score": 7, "weight": 4, "label": "行业处于成长期"}
+    out["7_industry"] = {"score": 7, "weight": 4, "label": ("업종 성장기 진입" if _ko else "行业处于成长期")}
 
     # 8 · 原材料
-    out["8_materials"] = {"score": 6, "weight": 3, "label": "原材料成本关注中"}
+    out["8_materials"] = {"score": 6, "weight": 3, "label": ("원자재 원가 주목" if _ko else "原材料成本关注中")}
 
     # 9 · 期货关联
-    out["9_futures"] = {"score": 5, "weight": 2, "label": "无强关联期货品种"}
+    out["9_futures"] = {"score": 5, "weight": 2, "label": ("강하게 연관된 선물 없음" if _ko else "无强关联期货品种")}
 
     # 10 · 估值
     val = _get("10_valuation")
@@ -1032,7 +1033,16 @@ def generate_synthesis(raw: dict, dims_scored: dict, panel: dict, agent_analysis
     # v3.4.1 · 用户反馈"神剑股份(002361 58分) 和博云新材(002297 60分) verdict 都是观望优先 ·
     #         看不出差异"。50-65 这个 15 分跨度太宽 · 拆成 50-55 / 55-60 / 60-65 三档 ·
     #         同时把流派分歧度作为后缀显示让差异更明显.
-    if overall >= 80:
+    if _ko:
+        if overall >= 80:   verdict_label = "적극 비중확대"
+        elif overall >= 70: verdict_label = "관심 가질 만함"
+        elif overall >= 65: verdict_label = "관심(다소 약함)"
+        elif overall >= 60: verdict_label = "관망 매수 우위"
+        elif overall >= 55: verdict_label = "관망 중립"
+        elif overall >= 50: verdict_label = "관망 매도 우위"
+        elif overall >= 35: verdict_label = "신중"
+        else:               verdict_label = "회피"
+    elif overall >= 80:
         verdict_label = "值得重仓"
     elif overall >= 70:
         verdict_label = "可以蹲一蹲"
@@ -1056,7 +1066,14 @@ def generate_synthesis(raw: dict, dims_scored: dict, panel: dict, agent_analysis
                           if s.get("verdict") in ("重仓", "买入")]
         bearish_schools = [s["label"] for s in school_scores.values()
                           if s.get("verdict") == "回避"]
-        if bullish_schools and bearish_schools:
+        if _ko:
+            if bullish_schools and bearish_schools:
+                verdict_label += f" · {len(bullish_schools)}파 매수 / {len(bearish_schools)}파 매도"
+            elif bullish_schools:
+                verdict_label += f" · {len(bullish_schools)}파 매수 우위"
+            elif bearish_schools:
+                verdict_label += f" · {len(bearish_schools)}파 매도 우위"
+        elif bullish_schools and bearish_schools:
             verdict_label += f" · {len(bullish_schools)} 派看多 / {len(bearish_schools)} 派看空"
         elif bullish_schools:
             verdict_label += f" · {len(bullish_schools)} 派看多"
@@ -1064,7 +1081,8 @@ def generate_synthesis(raw: dict, dims_scored: dict, panel: dict, agent_analysis
             verdict_label += f" · {len(bearish_schools)} 派看空"
 
     # v3.4.1 · 同时记 verdict_detail · 含 fund + consensus 精确分（让相近股票能区分）
-    verdict_detail = f"基本面 {fund_score:.1f} · 共识 {consensus:.1f}"
+    verdict_detail = (f"기초여건 {fund_score:.1f} · 공감 {consensus:.1f}" if _ko
+                      else f"基本面 {fund_score:.1f} · 共识 {consensus:.1f}")
 
     # Pick bull and bear for great divide
     # CRITICAL: must pick from ACTUALLY bullish/bearish investors, never misattribute
@@ -1231,7 +1249,9 @@ def generate_synthesis(raw: dict, dims_scored: dict, panel: dict, agent_analysis
     # Dashboard — core_conclusion: agent override > script
     ytd_return = (kline.get("kline_stats") or {}).get("ytd_return", "—")
     agent_core_conclusion = narrative_override.get("core_conclusion") or ""
-    core_conclusion = agent_core_conclusion or f"{name} · {int(overall)} 分 · {verdict_label}。51 位大佬里 {panel['signal_distribution']['bullish']} 人看多，YTD {ytd_return}。{punchline}"
+    core_conclusion = agent_core_conclusion or (
+        f"{name} · {int(overall)}점 · {verdict_label} · 거장 51인 중 {panel['signal_distribution']['bullish']}인 매수 우위 · YTD {ytd_return} · {punchline}" if _ko
+        else f"{name} · {int(overall)} 分 · {verdict_label}。51 位大佬里 {panel['signal_distribution']['bullish']} 人看多，YTD {ytd_return}。{punchline}")
 
     # v2.2 · dim_commentary: prefer agent-written, fallback to AUTO-SUMMARY (v2.6.1)
     # 关键修复：原 fallback 只生成 "[脚本占位]" 字符串，导致直跑模式下报告里

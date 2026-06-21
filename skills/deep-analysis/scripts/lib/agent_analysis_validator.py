@@ -205,6 +205,41 @@ def validate(agent_analysis: dict) -> list:
     return issues
 
 
+import re as _re
+
+_RE_HAN = _re.compile(r"[一-鿿]")
+
+
+def cjk_audit(agent_analysis: dict, max_samples: int = 8) -> tuple[int, list[dict]]:
+    """K(한국어) deep 산출물에 남은 한자 혼용을 감지(자동수정 아님 · 가드).
+
+    agent 가 한국어로 쓰도록 지시받지만 분량이 커지면 원문 한자가 섞일 수 있다
+    (new_dev_plan '회고: LLM 대량 번역의 한계'). 렌더 전 이 함수로 한자 개수와
+    위치(dotted path)를 집계해 경고 → 운영자/agent 가 재작성 판단.
+
+    returns (총 한자 수, [{path, count, sample}, ...])."""
+    hits: list[dict] = []
+    total = 0
+
+    def _walk(node, path):
+        nonlocal total
+        if isinstance(node, str):
+            found = _RE_HAN.findall(node)
+            if found:
+                total += len(found)
+                if len(hits) < max_samples:
+                    hits.append({"path": path, "count": len(found), "sample": node[:60]})
+        elif isinstance(node, dict):
+            for k, v in node.items():
+                _walk(v, f"{path}.{k}" if path else str(k))
+        elif isinstance(node, list):
+            for i, v in enumerate(node):
+                _walk(v, f"{path}[{i}]")
+
+    _walk(agent_analysis or {}, "")
+    return total, hits
+
+
 def format_issues(issues: list) -> str:
     """Pretty-print issues for console output."""
     if not issues:

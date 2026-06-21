@@ -92,3 +92,38 @@ def test_strip_unrendered_keeps_normal_braces():
     from lib.report.locale_ko import localize_ko
     out = localize_ko("function(){ return 1; }")
     assert "return 1" in out
+
+
+def test_localize_unit_counters():
+    """숫자 뒤 중국어 수량사 → 한국어 단위(分→점·人→명·次→회·条→건·份→건·家→곳)."""
+    from lib.report.locale_ko import localize_ko
+    out = localize_ko("56 分 · 10 人 · 0 次 · 30 条 · 20 份 · 30 家 · 0 个 · 5 类 · 5 日")
+    for zh in ("分", "人", "次", "条", "份", "家", "个", "类", "日"):
+        assert zh not in out, f"{zh} 미변환"
+    assert "56점" in out and "10명" in out and "0회" in out
+    assert "30건" in out and "30곳" in out and "5종" in out
+
+
+def test_localize_unit_counters_skip_compounds():
+    """합성어(分析/人民/分钟)는 건드리지 않는다(뒤에 한자가 오면 제외)."""
+    from lib.report.locale_ko import localize_ko
+    out = localize_ko("3分析 5人民 2分钟")
+    assert "分析" in out and "人民" in out and "分钟" in out
+
+
+def test_localize_disclaimer_block():
+    """면책 고지 전체 문장 통째 치환(한자 잔재 0)."""
+    from lib.report.locale_ko import localize_ko
+    src = ("本报告由 AI 模型基于公开信息生成，所有数据通过 akshare / yfinance / "
+           "公开数据接口获取，可能存在滞后或误差。")
+    out = localize_ko(src)
+    import re
+    assert not re.search(r"[一-鿿]", out), out
+
+
+def test_localize_new_dim_titles():
+    from lib.report.locale_ko import localize_ko
+    assert localize_ko("财报扎实度") == "재무 건전성"
+    assert localize_ko("上下游产业链") == "상하류 밸류체인"
+    assert localize_ko("管理层与治理") == "경영진·지배구조"
+    assert localize_ko("事件驱动") == "이벤트 드리븐"
