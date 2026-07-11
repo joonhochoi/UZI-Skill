@@ -16,7 +16,7 @@
 
 [Install](#install) · [Usage](#usage) · [Why Western Investors Should Care](#-why-western-investors-should-care) · [Jury Panel](#-51-investor-jury) · [Methods](#-17-institutional-methods) · [Self-Review Gate 🆕](#-mechanical-self-review-gate-new-in-v29) · [Screenshots](#-what-the-report-looks-like) · [FAQ](#-faq)
 
-**English** | [中文](README.md)
+**English** | [中文](README_CN.md) | [한국어](README.md)
 
 </div>
 
