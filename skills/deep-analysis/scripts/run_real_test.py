@@ -684,7 +684,8 @@ def stage2(ticker: str) -> str:
     # error 级结构问题不能继续 merge，否则 narrative_override/list 等坏结构会污染 synthesis。
     agent_analysis, _agent_analysis_issues = _validate_agent_analysis_or_fallback(agent_analysis, ti.full)
 
-        # K(한국어) 전용 · agent 산출물 한자 혼용 가드(감지·경고만, 자동수정 아님)
+    # K(한국어) 전용 · agent 산출물 한자 혼용 가드(감지·경고만, 자동수정 아님)
+    if agent_analysis:
         try:
             from lib.i18n import get_language as _gl
             if _gl() == "ko":
