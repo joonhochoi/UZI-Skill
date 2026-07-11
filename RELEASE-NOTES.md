@@ -1,5 +1,22 @@
 # Release Notes
 
+## v3.9.1 — 2026-06-23 (HTML 报告导航栏可折叠 · issue #79)
+
+### ✨ 新增 · 左侧导航栏折叠/展开
+
+社区 issue [#79](https://github.com/wbh604/UZI-Skill/issues/79)（@QKioi）：v3.6.0 加的左侧 sticky 章节导航栏会略微遮挡正文，希望能收起。本次按建议实现：
+
+- 导航栏顶部新增一个折叠按钮（沿用 `theme-toggle` 的玻璃拟态风格）
+- 展开态显示 `◀`，点一下收起成一个小圆把手（只剩 `☰` 图标，items 全藏，不再压住正文）；再点一下展开
+- 折叠状态写入 `localStorage`（key `uzi-toc-collapsed`），刷新/换页记忆，与暗色模式同一套持久化模式
+- 全程安全 DOM（`textContent` / `classList`，无 `innerHTML`）· 同步 `aria-expanded` / `aria-label` 可访问性
+
+### 🧪 测试
+
+7 个新回归（按钮 markup 在 rail 内 + aria + 折叠态 CSS 隐藏 items + localStorage 读写 + click 切换 + 无 innerHTML）· **649/649 全过**
+
+---
+
 ## v3.9.0 — 2026-06-11 (新评委「股海贼王」· 首位从真实交割单蒸馏的评委)
 
 ### ✨ 背景 · 用户提供十年实盘数据
